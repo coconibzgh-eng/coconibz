@@ -6,6 +6,7 @@ const accountPanel = document.querySelector("#account-panel");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
 const otpForm = document.querySelector("#otp-form");
+const resendSignupOtpButton = document.querySelector("#resend-signup-otp-button");
 const resendOtpButton = document.querySelector("#resend-otp-button");
 const ordersBody = document.querySelector("#orders-body");
 const loadMoreButton = document.querySelector("#load-more-orders");
@@ -191,6 +192,35 @@ signupForm.addEventListener("submit", async (event) => {
     }
   } catch (error) {
     showMessage(`Could not create your account: ${error.message}`, true);
+    setBusy(signupForm, false);
+  }
+});
+
+resendSignupOtpButton.addEventListener("click", async () => {
+  const phone = normalizePhone(String(new FormData(signupForm).get("phone") || ""));
+  if (!/^\+[1-9][0-9]{7,14}$/.test(phone)) {
+    showMessage("Enter the account phone number in international format, for example +233241234567.", true);
+    return;
+  }
+
+  setBusy(signupForm, true);
+  showMessage("Requesting another verification code...");
+
+  try {
+    const { error } = await backend.client.auth.resend({
+      type: "sms",
+      phone,
+    });
+    if (error) throw error;
+    pendingPhone = phone;
+    document.querySelector("#otp-phone-label").textContent = phone;
+    signupForm.hidden = true;
+    loginForm.hidden = true;
+    otpForm.hidden = false;
+    showMessage("A new verification code was requested. Check your SMS messages.");
+  } catch (error) {
+    showMessage(`Could not resend the verification code: ${error.message}`, true);
+  } finally {
     setBusy(signupForm, false);
   }
 });
