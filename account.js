@@ -6,6 +6,7 @@ const accountPanel = document.querySelector("#account-panel");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
 const otpForm = document.querySelector("#otp-form");
+const resendOtpButton = document.querySelector("#resend-otp-button");
 const ordersBody = document.querySelector("#orders-body");
 const loadMoreButton = document.querySelector("#load-more-orders");
 const pageSize = 100;
@@ -211,6 +212,24 @@ otpForm.addEventListener("submit", async (event) => {
     await showSignedInAccount(data.session);
   } catch (error) {
     showMessage(`Could not verify the code: ${error.message}`, true);
+    setBusy(otpForm, false);
+  }
+});
+
+resendOtpButton.addEventListener("click", async () => {
+  setBusy(otpForm, true);
+  showMessage("Requesting another verification code...");
+
+  try {
+    const { error } = await backend.client.auth.resend({
+      type: "sms",
+      phone: pendingPhone,
+    });
+    if (error) throw error;
+    showMessage("A new verification code was requested. Check your SMS messages.");
+  } catch (error) {
+    showMessage(`Could not resend the verification code: ${error.message}`, true);
+  } finally {
     setBusy(otpForm, false);
   }
 });
