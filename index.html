@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Meet COCONIBZ: fresh coconut drinks, made for sunny days. Choose classic coconut, coconut with tigernuts, or coconut with dates.">
+  <meta name="theme-color" content="#fffdf8">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="COCONIBZ | Drink natural, Drink Healthy">
+  <meta property="og:description" content="COCONIBZ fresh coconut beverages. Drink natural, Drink Healthy. Find your flavor or visit a retail shop.">
+  <meta property="og:image" content="images/homepage-lifestyle.png">
+  <meta property="og:url" content="https://example.com">
+  <title>COCONIBZ | Drink natural, Drink Healthy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="supabase-client.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" id="top">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="wordmark" href="#home" aria-label="COCONIBZ home">COCONIBZ<span class="wordmark-dot">.</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-menu" aria-label="Open navigation menu"><span></span><span></span></button>
+      <div class="nav-menu" id="primary-menu">
+        <div class="nav-links"><a href="#home">Home</a><a href="#flavors">Flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="#about">About</a><a href="#locations">Locations</a><a href="account.html">My Orders / Join</a></div>
+        <a class="button button-nav" data-whatsapp="general" href="https://wa.me/233246344188" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.5 11.8a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.4-4.9a8.4 8.4 0 1 1 16.1-3.8Z"/><path d="M9 8.2c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2.1.4 0 .5l-.5.7c-.2.2-.3.4-.1.7a6.8 6.8 0 0 0 2.7 2.4c.3.2.5.2.7-.1l.8-.9c.2-.2.4-.3.7-.2l1.6.8c.3.1.4.3.4.5 0 .3-.2 1.2-.8 1.7-.5.5-1.2.7-1.8.7-.4 0-1.1-.1-2-.5a12.6 12.6 0 0 1-4.3-3.8 5.2 5.2 0 0 1-1.1-2.8c0-.7.3-1.3.7-1.8Z"/></svg><span>Order on WhatsApp</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="home" aria-labelledby="hero-title">
+      <div class="hero-art" aria-label="COCONIBZ coconut milkshake held on a tropical beach">
+        <!-- EDIT: Replace with your latest COCONIBZ lifestyle photograph. -->
+        <img class="hero-coconut" src="images/homepage-lifestyle.png" alt="A hand holding a chilled COCONIBZ coconut milkshake bottle on a tropical beach">
+      </div>
+      <div class="hero-text reveal">
+        <p class="eyebrow"><span class="eyebrow-line"></span> FRESH COCONUT BEVERAGES <span class="eyebrow-line"></span></p>
+        <h1 class="hero-brand-name" id="hero-title">COCONIBZ</h1>
+        <p class="hero-motto">Drink natural,<br>Drink Healthy</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#flavors">ORDER <span aria-hidden="true">↗</span></a>
+          <a class="button button-retail" href="#locations">Retail Shops <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="flavors section-pad" id="flavors" aria-labelledby="flavors-title">
+      <div class="section-heading reveal"><p class="eyebrow"><span class="eyebrow-line"></span> THE GOOD STUFF</p><h2 id="flavors-title">Choose Your <em>Flavor.</em></h2><p>Pick a favorite and enjoy a fresh coconut drink, your way.</p></div>
+      <div class="order-controls reveal" aria-label="Combined order preferences">
+        <fieldset class="fulfillment-control"><legend class="control-label">HOW WOULD YOU LIKE IT?</legend><div class="fulfillment-options"><label class="fulfillment-option"><input type="radio" name="fulfillment" value="pickup" checked><span>Pickup</span></label><label class="fulfillment-option"><input type="radio" name="fulfillment" value="delivery"><span>Delivery</span></label></div></fieldset>
+        <label class="shop-picker" id="pickup-shop-field" for="shop-select"><span class="control-label">PICKUP SPOT</span><select id="shop-select" name="shop" required><option value="" selected disabled>Choose a shop</option><!-- Shop options are generated from the location cards below. --></select></label>
+        <div class="delivery-details" id="delivery-details" hidden>
+          <label class="delivery-area-field" for="delivery-area"><span class="control-label">DELIVERY AREA</span><select id="delivery-area" name="delivery-area"><option value="" selected disabled>Choose area</option><option value="Campus" data-fee="5">Campus · GHS 5</option><option value="Town/off campus" data-fee="10">Town/off campus · GHS 10</option></select></label>
+          <label class="delivery-location-field" for="delivery-location"><span class="control-label">DELIVERY LOCATION</span><input id="delivery-location" name="delivery-location" type="text" autocomplete="street-address" placeholder="Enter address, hostel or landmark"></label>
+          <button class="button button-location" id="use-location" type="button"><span aria-hidden="true">◎</span> Use my location</button>
+          <p class="location-status" id="location-status" aria-live="polite"></p>
+        </div>
+        <p class="order-account-status" id="order-account-status" aria-live="polite">Sign in or join to save and track your order.</p>
+        <a class="order-account-link" href="account.html">My Orders / Join</a>
+        <p class="order-hint" id="order-summary" aria-live="polite">Choose a quantity for each flavor you want.</p>
+        <section class="order-bill" aria-labelledby="order-bill-title">
+          <div class="order-bill-items">
+            <h3 id="order-bill-title">Your bill</h3>
+            <ul id="order-bill-items" aria-live="polite"><li class="order-bill-empty">Choose quantities to preview your bill.</li></ul>
+          </div>
+          <div class="order-bill-totals">
+            <p><span>Subtotal</span><strong id="order-subtotal">GHS 0</strong></p>
+            <p><span>Delivery fee</span><strong id="order-delivery-fee">GHS 0</strong></p>
+            <p class="order-bill-total"><span>Total</span><strong id="order-total">GHS 0</strong></p>
+            <p class="order-bill-note" id="order-bill-note" aria-live="polite">Choose quantities to preview your bill.</p>
+          </div>
+        </section>
+        <a class="button button-primary order-selected" id="order-selected" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true" tabindex="-1">Order selected flavors <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="product-grid">
+        <article class="product-card product-classic reveal" data-order-product="Coconut" data-product-key="classic" data-price="12"><div class="product-visual"><span class="product-number">01 / CLASSIC</span><!-- EDIT: Replace with your classic coconut product photo. --><img src="images/flavor-classic.png" alt="COCONIBZ classic coconut beverage package with transparent background" loading="lazy"></div><div class="product-info"><div class="product-title-row"><h3>Coconut</h3><span class="product-price">GHS 12</span></div><p class="product-benefit"><strong>Why you’ll like it:</strong> A smooth, familiar coconut taste for a simple refreshing sip.</p><p class="product-ingredients"><strong>Ingredients:</strong> Coconut extract, water, sugar &amp; water.</p><div class="flavor-quantity"><span class="control-label">QUANTITY</span><div class="stepper"><button class="stepper-button" type="button" data-mix-change="-1" aria-label="Remove one Coconut">−</button><output data-flavor-quantity aria-live="polite">0</output><button class="stepper-button" type="button" data-mix-change="1" aria-label="Add one Coconut">+</button></div></div></div></article>
+        <article class="product-card product-tigernut reveal" data-order-product="Coconut with Tigernuts" data-product-key="tigernut" data-price="12"><div class="product-visual"><span class="product-number">02 / NUTTY</span><!-- EDIT: Replace with your coconut and tigernut product photo. --><img src="images/flavor-tigernut.png" alt="COCONIBZ coconut and tigernut beverage package with transparent background" loading="lazy"></div><div class="product-info"><div class="product-title-row"><h3>Coconut <span>with Tigernuts</span></h3><span class="product-price">GHS 12</span></div><p class="product-benefit"><strong>Why you’ll like it:</strong> A mellow, nutty sweetness with a gentle hint of ginger.</p><p class="product-ingredients"><strong>Ingredients:</strong> Coconut extract, water, tigernut, ginger &amp; water.</p><div class="flavor-quantity"><span class="control-label">QUANTITY</span><div class="stepper"><button class="stepper-button" type="button" data-mix-change="-1" aria-label="Remove one Coconut with Tigernuts">−</button><output data-flavor-quantity aria-live="polite">0</output><button class="stepper-button" type="button" data-mix-change="1" aria-label="Add one Coconut with Tigernuts">+</button></div></div></div></article>
+        <article class="product-card product-dates reveal" data-order-product="Coconut with Dates" data-product-key="dates" data-price="12"><div class="product-visual"><span class="product-number">03 / SWEET</span><!-- EDIT: Replace with your coconut and dates product photo. --><img src="images/flavor-dates.png" alt="COCONIBZ coconut and dates beverage package with transparent background" loading="lazy"></div><div class="product-info"><div class="product-title-row"><h3>Coconut <span>with Dates</span></h3><span class="product-price">GHS 12</span></div><p class="product-benefit"><strong>Why you’ll like it:</strong> Dates add a warm, naturally sweet note to the creamy coconut flavor.</p><p class="product-ingredients"><strong>Ingredients:</strong> Coconut extract, water, dates &amp; milk. Contains milk.</p><div class="flavor-quantity"><span class="control-label">QUANTITY</span><div class="stepper"><button class="stepper-button" type="button" data-mix-change="-1" aria-label="Remove one Coconut with Dates">−</button><output data-flavor-quantity aria-live="polite">0</output><button class="stepper-button" type="button" data-mix-change="1" aria-label="Add one Coconut with Dates">+</button></div></div></div></article>
+      </div>
+      <p class="price-note">Each bottle is GHS 12. Made fresh, enjoyed chilled.</p>
+    </section>
+
+    <section class="about section-pad" id="about" aria-labelledby="about-title">
+      <div class="about-art reveal"><div class="about-orbit orbit-one"></div><div class="about-orbit orbit-two"></div><span class="about-sunmark" aria-hidden="true">C</span><span class="about-art-caption">COCONIBZ<br>MADE FOR THE MOMENT</span><span class="about-leaf about-leaf-one" aria-hidden="true">✳</span><span class="about-leaf about-leaf-two" aria-hidden="true">✳</span></div>
+      <div class="about-copy reveal">
+        <p class="eyebrow"><span class="eyebrow-line"></span> OUR LITTLE STORY</p>
+        <h2 id="about-title">About <em>Coconibz.</em></h2>
+        <p class="about-tagline">Pure Coconut. Pure Ghana. Pure Goodness.</p>
+        <p class="about-story">Welcome to Coconibz, where the natural power of coconut meets authentic Ghanaian goodness.</p>
+        <p>Coconibz is a premium, all-natural coconut beverage proudly produced by NAKEL'S FOODIE, a 100% Ghanaian-owned company registered and recognized by the GRA. Born in the heart of Tamale, Asawaba, we are on a mission to redefine healthy refreshment in Ghana, one bottle at a time.</p>
+        <p>We believe what you drink should nourish you. That's why Coconibz is made with absolutely no added sugar, no additives, and no preservatives. Just fresh coconut, treated drinking water, and nature's own sweeteners.</p>
+        <h3 class="about-flavors-title">Discover Your Favorite Flavor</h3>
+        <ol class="about-flavors">
+          <li><strong>Coconut Classic</strong> — The pure, unfiltered taste of fresh coconut milk. Smooth, refreshing, and original.</li>
+          <li><strong>Coconut with Dates</strong> — Naturally sweetened with premium dates. A healthy sweetness your body will thank you for.</li>
+          <li><strong>Coconut with Tigernut</strong> — Our extra-creamy blend. Enriched with tigernut for that extra milky richness and energy boost.</li>
+        </ol>
+        <p>Every bottle is 100% natural, organic, and made under strict hygienic conditions.</p>
+        <p>We are proud to be a product recognized and supported by the Jim Leech Foundation of Queen's University and the Mastercard Foundation, a testament to our quality, innovation, and commitment to youth-led Ghanaian enterprise.</p>
+        <p>From our kitchen in Tamale to events across the country, Coconibz has refreshed guests at weddings, corporate events, and private parties. And with our nationwide delivery, your favorite healthy drink is never too far away.</p>
+        <p class="about-signoff"><strong>Coconibz — Taste Nature. Taste Ghana.</strong><br>NAKEL'S FOODIE<br>Tamale, Asawaba — Ghana<br>Nationwide Delivery Available</p>
+        <div class="quality-grid"><div class="quality-item"><span class="quality-icon" aria-hidden="true">✿</span><span>Natural<br>goodness</span></div><div class="quality-item"><span class="quality-icon" aria-hidden="true">◉</span><span>Fresh<br>every day</span></div><div class="quality-item"><span class="quality-icon" aria-hidden="true">☀</span><span>Made to<br>refresh</span></div><div class="quality-item"><span class="quality-icon" aria-hidden="true">⌂</span><span>Locally<br>made</span></div></div>
+      </div>
+    </section>
+
+    <section class="locations section-pad" id="locations" aria-labelledby="locations-title">
+      <div class="section-heading reveal"><p class="eyebrow"><span class="eyebrow-line"></span> COME SAY HELLO</p><h2 id="locations-title">A little closer <em>to you.</em></h2><p>Six spots to find your new favorite sip.</p></div>
+      <div class="location-grid">
+        <!-- EDIT: Add each shop's GPS pin or street address in data-shop-address for precise Google Maps directions. -->
+        <article class="location-card reveal" data-shop-id="uds-campus-mall"><span class="location-index">01</span><div><h3>UDS CAMPUS MALL</h3><p data-shop-address="">Address/GPS pin to be added</p><span class="opening-hours">Hours to be confirmed</span></div><a class="directions-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Search Google Maps for UDS Campus Mall">↗</a></article>
+        <article class="location-card reveal" data-shop-id="dalims-multipurpose-shop"><span class="location-index">02</span><div><h3>DALIMS MULTIPURPOSE SHOP</h3><p data-shop-address="">Address/GPS pin to be added</p><a class="shop-whatsapp" href="https://wa.me/233241637249?text=Hello%2C%20I%20would%20like%20to%20order%20from%20COCONIBZ%20at%20Dalims%20Multipurpose%20Shop.%20Please%20share%20the%20details." target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 163 7249</a><span class="opening-hours">Hours to be confirmed</span></div><a class="directions-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Search Google Maps for Dalims Multipurpose Shop">↗</a></article>
+        <article class="location-card reveal" data-shop-id="fashion-scientist-couture"><span class="location-index">03</span><div><h3>FASHION SCIENTIST COUTURE</h3><p data-shop-address="">Address/GPS pin to be added</p><a class="shop-whatsapp" href="https://wa.me/233549587229?text=Hello%2C%20I%20would%20like%20to%20order%20from%20COCONIBZ%20at%20Fashion%20Scientist%20Couture.%20Please%20share%20the%20details." target="_blank" rel="noopener noreferrer">WhatsApp: +233 54 958 7229</a><span class="opening-hours">Hours to be confirmed</span></div><a class="directions-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Search Google Maps for Fashion Scientist Couture">↗</a></article>
+        <article class="location-card reveal" data-shop-id="nasara-hostel" data-map-url="https://www.google.com/maps/search/?api=1&amp;query=9.412126%2C-0.863540"><span class="location-index">04</span><div><h3>NASARA HOSTEL</h3><p data-shop-address="">9.412126, -0.863540</p><a class="shop-whatsapp" href="https://wa.me/233241855696?text=Hello%2C%20I%20would%20like%20to%20order%20from%20COCONIBZ%20at%20Nasara%20Hostel.%20Please%20share%20the%20details." target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 185 5696</a><span class="opening-hours">Hours to be confirmed</span></div><a class="directions-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Get directions to Nasara Hostel">↗</a></article>
+        <article class="location-card reveal" data-shop-id="asawaba-goil-zonal-office"><span class="location-index">05</span><div><h3>ASAWABA, GOIL ZONAL OFFICE</h3><p data-shop-address="">Address/GPS pin to be added</p><a class="shop-whatsapp" href="https://wa.me/233246344188?text=Hello%2C%20I%20would%20like%20to%20order%20from%20COCONIBZ%20at%20Asawaba%2C%20GOIL%20Zonal%20Office.%20Please%20share%20the%20details." target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 634 4188</a><span class="opening-hours">Hours to be confirmed</span></div><a class="directions-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Search Google Maps for Asawaba, Goil Zonal Office">↗</a></article>
+        <article class="location-card reveal" data-shop-id="ellizian-shop-legon-hostel"><span class="location-index">06</span><div><h3>ELLIZIAN SHOP (LEGON HOSTEL)</h3><p data-shop-address="">Legon Hostel</p><a class="shop-whatsapp" href="https://wa.me/233244330356?text=Hello%2C%20I%20would%20like%20to%20order%20from%20COCONIBZ%20at%20Ellizian%20Shop%20%28Legon%20Hostel%29.%20Please%20share%20the%20details." target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 433 0356</a><span class="opening-hours">Hours to be confirmed</span></div><a class="directions-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Get directions to Ellizian Shop at Legon Hostel">↗</a></article>
+      </div>
+      <p class="map-note">Open a shop's Google Maps link for directions. GPS pins can be added for the remaining locations.</p>
+    </section>
+
+    <section class="social-band section-pad" id="social" aria-labelledby="social-title">
+      <div class="social-inner reveal"><div><p class="eyebrow"><span class="eyebrow-line"></span> STAY IN THE SUNSHINE</p><h2 id="social-title">Good sips. Good <em>company.</em></h2><p>Follow along for fresh pours, happy moments, and a little COCONIBZ goodness.</p></div>
+        <div class="social-links" aria-label="Social media">
+          <!-- EDIT: Replace social profile URLs with your active brand accounts. -->
+          <a class="social-button" href="https://wa.me/233246344188" data-whatsapp="general" target="_blank" rel="noopener noreferrer" aria-label="Message COCONIBZ on WhatsApp"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.5 11.8a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.4-4.9a8.4 8.4 0 1 1 16.1-3.8Z"/><path d="M9 8.2c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2.1.4 0 .5l-.5.7c-.2.2-.3.4-.1.7a6.8 6.8 0 0 0 2.7 2.4c.3.2.5.2.7-.1l.8-.9c.2-.2.4-.3.7-.2l1.6.8c.3.1.4.3.4.5 0 .3-.2 1.2-.8 1.7-.5.5-1.2.7-1.8.7-.4 0-1.1-.1-2-.5a12.6 12.6 0 0 1-4.3-3.8 5.2 5.2 0 0 1-1.1-2.8c0-.7.3-1.3.7-1.8Z"/></svg></a>
+          <a class="social-button" href="[INSTAGRAM URL]" target="_blank" rel="noopener noreferrer" aria-label="COCONIBZ on Instagram"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle class="icon-fill" cx="18" cy="6" r="1"/></svg></a>
+          <a class="social-button" href="[FACEBOOK URL]" target="_blank" rel="noopener noreferrer" aria-label="COCONIBZ on Facebook"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 21v-8h3l.5-4H14V7c0-1.2.4-2 2-2h2V1.4C17.3 1.2 16.2 1 15 1c-3.2 0-5 1.9-5 5.3V9H7v4h3v8Z"/></svg></a>
+          <a class="social-button" href="[TIKTOK URL]" target="_blank" rel="noopener noreferrer" aria-label="COCONIBZ on TikTok"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3v11.1a4 4 0 1 1-3.5-4V6.5a7.7 7.7 0 1 0 7.1 7.6V9.8a9 9 0 0 0 4.2 1.1V7.4A5.5 5.5 0 0 1 16.2 3Z"/></svg></a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="footer-main"><div class="footer-brand"><a class="wordmark" href="#home">COCONIBZ<span class="wordmark-dot">.</span></a><p>A little sunshine in every sip.</p></div><div class="footer-links"><span class="footer-label">TAKE A LOOK</span><a href="#flavors">Our flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="account.html">My Orders / Join</a><a href="#about">Our story</a><a href="#locations">Find a shop</a></div><div class="footer-contact"><span class="footer-label">SAY HELLO</span><a href="https://wa.me/233246344188" data-whatsapp="general" target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 634 4188</a><!-- EDIT: Replace the WhatsApp number in script.js and update this contact label. --></div></div><div class="footer-bottom"><span>© <span id="current-year"></span> COCONIBZ</span><a href="#top">Back to the top ↑</a><span>Made for sunny days.</span></div></footer>
+  <a class="floating-whatsapp" href="https://wa.me/233246344188" data-whatsapp="general" target="_blank" rel="noopener noreferrer" aria-label="Order COCONIBZ on WhatsApp"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.5 11.8a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.4-4.9a8.4 8.4 0 1 1 16.1-3.8Z"/><path d="M9 8.2c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2.1.4 0 .5l-.5.7c-.2.2-.3.4-.1.7a6.8 6.8 0 0 0 2.7 2.4c.3.2.5.2.7-.1l.8-.9c.2-.2.4-.3.7-.2l1.6.8c.3.1.4.3.4.5 0 .3-.2 1.2-.8 1.7-.5.5-1.2.7-1.8.7-.4 0-1.1-.1-2-.5a12.6 12.6 0 0 1-4.3-3.8 5.2 5.2 0 0 1-1.1-2.8c0-.7.3-1.3.7-1.8Z"/></svg></a>
+</body>
+</html>

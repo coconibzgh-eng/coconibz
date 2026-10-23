@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Restricted COCONIBZ order and shop sales portal.">
+  <meta name="theme-color" content="#fffdf8">
+  <title>Shop Portal | COCONIBZ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="supabase-client.js" defer></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" id="top">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="wordmark" href="index.html#home" aria-label="COCONIBZ home">COCONIBZ<span class="wordmark-dot">.</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-menu" aria-label="Open navigation menu"><span></span><span></span></button>
+      <div class="nav-menu" id="primary-menu">
+        <div class="nav-links"><a href="index.html#home">Home</a><a href="index.html#flavors">Flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="account.html">My Orders</a></div>
+        <button class="button button-nav" id="portal-logout" type="button">Log out</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="portal-page">
+    <section class="portal-hero">
+      <p class="eyebrow"><span class="eyebrow-line"></span> RESTRICTED SHOP PORTAL</p>
+      <h1>Order <em>tracking.</em></h1>
+      <p id="portal-role-note">Loading your authorized shop access...</p>
+    </section>
+    <p class="portal-message" id="portal-message" role="status" aria-live="polite">Checking your account permissions...</p>
+
+    <section class="admin-dashboard" id="admin-dashboard" hidden>
+      <section class="staff-section portal-card" id="staff-section" hidden>
+        <div class="account-heading"><div><p class="eyebrow"><span class="eyebrow-line"></span> ACCOUNT ACCESS</p><h2>Retailer access</h2></div></div>
+        <p class="portal-subtitle">Retailers must create an account and verify their phone first. Assign or change their shop access here. The owner admin phone remains an admin account.</p>
+        <form class="staff-access-form" id="staff-access-form">
+          <label for="retailer-phone">Retailer phone number<input id="retailer-phone" type="tel" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}"></label>
+          <label for="retailer-shops">Assigned shops<select id="retailer-shops" multiple required size="5"></select></label>
+          <div class="staff-actions"><button class="button button-primary" type="submit">Save retailer access</button><button class="button button-logout" id="remove-retailer-access" type="button">Remove retailer access</button></div>
+        </form>
+        <p class="portal-message" id="staff-message" aria-live="polite"></p>
+      </section>
+
+      <section class="sales-section portal-card" id="sales-section" hidden>
+        <div class="account-heading"><div><p class="eyebrow"><span class="eyebrow-line"></span> FINANCIAL SUMMARY</p><h2>Completed sales</h2></div></div>
+        <p class="portal-subtitle">Totals include orders marked completed, within the selected date range. Delivery orders without an assigned pickup shop are listed separately.</p>
+        <div class="sales-summary" id="sales-summary"></div>
+        <div class="sales-table-wrap">
+          <table class="orders-table sales-table">
+            <thead><tr><th>Shop</th><th>Completed orders</th><th>Sales total</th></tr></thead>
+            <tbody id="sales-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="orders-section portal-card">
+        <div class="account-heading"><div><p class="eyebrow"><span class="eyebrow-line"></span> CUSTOMER REQUESTS</p><h2>Orders</h2></div></div>
+        <div class="order-filters admin-filters">
+          <label for="admin-start">From date<input id="admin-start" type="date"></label>
+          <label for="admin-end">To date<input id="admin-end" type="date"></label>
+          <label for="admin-shop">Shop<select id="admin-shop"><option value="">All assigned shops</option></select></label>
+          <label for="admin-flavor">Flavor<select id="admin-flavor"><option value="">All flavors</option><option value="classic">Coconut</option><option value="dates">Coconut with Dates</option><option value="tigernut">Coconut with Tigernuts</option></select></label>
+          <label for="admin-status">Status<select id="admin-status"><option value="">All statuses</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="preparing">Preparing</option><option value="ready">Ready</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+          <label for="admin-sort">Sort by<select id="admin-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="flavor">Flavor A–Z</option></select></label>
+        </div>
+        <p class="portal-message" id="orders-message" aria-live="polite"></p>
+        <div class="orders-table-wrap">
+          <table class="orders-table admin-orders-table">
+            <thead><tr><th>Date</th><th>Customer</th><th>Shop / delivery</th><th>Flavors</th><th>Total</th><th>Status</th></tr></thead>
+            <tbody id="admin-orders-body"></tbody>
+          </table>
+        </div>
+        <button class="button button-load-more" id="admin-load-more" type="button" hidden>Load more orders</button>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-main">
+      <div class="footer-brand"><a class="wordmark" href="index.html#home">COCONIBZ<span class="wordmark-dot">.</span></a><p>A little sunshine in every sip.</p></div>
+      <div class="footer-links"><span class="footer-label">TAKE A LOOK</span><a href="index.html#flavors">Our flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="index.html#locations">Find a shop</a></div>
+      <div class="footer-contact"><span class="footer-label">SAY HELLO</span><a href="https://wa.me/233246344188" target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 634 4188</a></div>
+    </div>
+    <div class="footer-bottom"><span>© <span id="current-year"></span> COCONIBZ</span><a href="#top">Back to the top ↑</a><span>Made for sunny days.</span></div>
+  </footer>
+</body>
+</html>

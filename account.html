@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Join COCONIBZ, sign in, and track your orders.">
+  <meta name="theme-color" content="#fffdf8">
+  <title>My Orders &amp; Join | COCONIBZ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="supabase-client.js" defer></script>
+  <script src="account.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" id="top">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="wordmark" href="index.html#home" aria-label="COCONIBZ home">COCONIBZ<span class="wordmark-dot">.</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-menu" aria-label="Open navigation menu"><span></span><span></span></button>
+      <div class="nav-menu" id="primary-menu">
+        <div class="nav-links"><a href="index.html#home">Home</a><a href="index.html#flavors">Flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="index.html#locations">Locations</a></div>
+        <a class="button button-nav" href="index.html#flavors">Order drinks <span aria-hidden="true">↗</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="portal-page">
+    <section class="portal-hero">
+      <p class="eyebrow"><span class="eyebrow-line"></span> YOUR COCONIBZ ACCOUNT</p>
+      <h1>My Orders <em>&amp; Join.</em></h1>
+      <p>Join or sign in to save your order requests and follow their status.</p>
+    </section>
+
+    <p class="portal-message" id="account-message" role="status" aria-live="polite"></p>
+
+    <section class="auth-grid" id="auth-panel" aria-label="Sign in or create an account">
+      <form class="portal-card auth-form" id="signup-form">
+        <h2>Join COCONIBZ</h2>
+        <p>Create a customer account with your name and phone number.</p>
+        <label for="signup-name">Full name</label>
+        <input id="signup-name" name="full_name" autocomplete="name" required maxlength="100">
+        <label for="signup-phone">Phone number</label>
+        <input id="signup-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}" title="Use international format, for example +233241234567">
+        <label for="signup-password">Password</label>
+        <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+        <button class="button button-primary" type="submit">Join and verify phone</button>
+      </form>
+
+      <form class="portal-card auth-form" id="login-form">
+        <h2>Welcome back</h2>
+        <p>Sign in with the phone number you verified and your password.</p>
+        <label for="login-phone">Phone number</label>
+        <input id="login-phone" name="phone" type="tel" autocomplete="username" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}">
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <button class="button button-primary" type="submit">Sign in</button>
+      </form>
+
+      <form class="portal-card auth-form otp-form" id="otp-form" hidden>
+        <h2>Verify your phone</h2>
+        <p>Enter the SMS verification code sent to <strong id="otp-phone-label"></strong>.</p>
+        <label for="otp-code">Verification code</label>
+        <input id="otp-code" name="token" inputmode="numeric" autocomplete="one-time-code" required>
+        <button class="button button-primary" type="submit">Verify and continue</button>
+      </form>
+    </section>
+
+    <section class="account-panel portal-card" id="account-panel" hidden>
+      <div class="account-heading">
+        <div><p class="eyebrow"><span class="eyebrow-line"></span> ORDER HISTORY</p><h2 id="account-welcome">Your orders</h2></div>
+        <div class="account-actions"><a class="button button-account-admin" id="admin-portal-link" href="admin.html" hidden>Shop portal</a><button class="button button-logout" id="logout-button" type="button">Log out</button></div>
+      </div>
+      <p class="portal-subtitle">Order requests appear here after they are saved. WhatsApp orders are sent separately for shop confirmation.</p>
+      <div class="order-filters">
+        <label for="filter-start">From date<input id="filter-start" type="date"></label>
+        <label for="filter-end">To date<input id="filter-end" type="date"></label>
+        <label for="filter-flavor">Flavor<select id="filter-flavor"><option value="">All flavors</option><option value="classic">Coconut</option><option value="dates">Coconut with Dates</option><option value="tigernut">Coconut with Tigernuts</option></select></label>
+        <label for="order-sort">Sort by<select id="order-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="flavor">Flavor A–Z</option></select></label>
+      </div>
+      <p class="portal-message" id="orders-message" aria-live="polite"></p>
+      <div class="orders-table-wrap">
+        <table class="orders-table">
+          <thead><tr><th>Date</th><th>Shop / delivery</th><th>Flavors</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+      <button class="button button-load-more" id="load-more-orders" type="button" hidden>Load more orders</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-main">
+      <div class="footer-brand"><a class="wordmark" href="index.html#home">COCONIBZ<span class="wordmark-dot">.</span></a><p>A little sunshine in every sip.</p></div>
+      <div class="footer-links"><span class="footer-label">TAKE A LOOK</span><a href="index.html#flavors">Our flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="index.html#locations">Find a shop</a></div>
+      <div class="footer-contact"><span class="footer-label">SAY HELLO</span><a href="https://wa.me/233246344188" target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 634 4188</a></div>
+    </div>
+    <div class="footer-bottom"><span>© <span id="current-year"></span> COCONIBZ</span><a href="#top">Back to the top ↑</a><span>Made for sunny days.</span></div>
+  </footer>
+</body>
+</html>
