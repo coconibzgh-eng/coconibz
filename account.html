@@ -44,13 +44,12 @@
         <input id="signup-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}" title="Use international format, for example +233241234567">
         <label for="signup-password">Password</label>
         <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
-        <button class="button button-primary" type="submit">Join and verify phone</button>
-        <button class="button button-logout" id="resend-signup-otp-button" type="button">Already signed up? Resend verification code</button>
+        <button class="button button-primary" type="submit">Create account</button>
       </form>
 
       <form class="portal-card auth-form" id="login-form">
         <h2>Welcome back</h2>
-        <p>Sign in with the phone number you verified and your password.</p>
+        <p>Sign in with the phone number and password you used to create your account.</p>
         <label for="login-phone">Phone number</label>
         <input id="login-phone" name="phone" type="tel" autocomplete="username" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}">
         <label for="login-password">Password</label>

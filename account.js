@@ -8,7 +8,6 @@ const accountPanel = document.querySelector("#account-panel");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
 const otpForm = document.querySelector("#otp-form");
-const resendSignupOtpButton = document.querySelector("#resend-signup-otp-button");
 const resendOtpButton = document.querySelector("#resend-otp-button");
 const ordersBody = document.querySelector("#orders-body");
 const loadMoreButton = document.querySelector("#load-more-orders");
@@ -173,7 +172,7 @@ function renderOrders() {
 signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setBusy(signupForm, true);
-  showMessage("Creating your account and sending a verification code...");
+  showMessage("Creating your account...");
   const formData = new FormData(signupForm);
   pendingPhone = normalizePhone(String(formData.get("phone")));
 
@@ -184,45 +183,19 @@ signupForm.addEventListener("submit", async (event) => {
       options: { data: { full_name: String(formData.get("full_name")).trim() } },
     });
     if (error) throw error;
+    if (data.session) {
+      showMessage("Your account is ready.");
+      await showSignedInAccount(data.session);
+      return;
+    }
+
     document.querySelector("#otp-phone-label").textContent = pendingPhone;
     signupForm.hidden = true;
     loginForm.hidden = true;
     otpForm.hidden = false;
     showMessage("Enter the SMS code to verify your phone.");
-    if (data.session) {
-      await showSignedInAccount(data.session);
-    }
   } catch (error) {
     showMessage(`Could not create your account: ${error.message}`, true);
-    setBusy(signupForm, false);
-  }
-});
-
-resendSignupOtpButton.addEventListener("click", async () => {
-  const phone = normalizePhone(String(new FormData(signupForm).get("phone") || ""));
-  if (!/^\+[1-9][0-9]{7,14}$/.test(phone)) {
-    showMessage("Enter the account phone number in international format, for example +233241234567.", true);
-    return;
-  }
-
-  setBusy(signupForm, true);
-  showMessage("Requesting another verification code...");
-
-  try {
-    const { error } = await backend.client.auth.resend({
-      type: "sms",
-      phone,
-    });
-    if (error) throw error;
-    pendingPhone = phone;
-    document.querySelector("#otp-phone-label").textContent = phone;
-    signupForm.hidden = true;
-    loginForm.hidden = true;
-    otpForm.hidden = false;
-    showMessage("A new verification code was requested. Check your SMS messages.");
-  } catch (error) {
-    showMessage(`Could not resend the verification code: ${error.message}`, true);
-  } finally {
     setBusy(signupForm, false);
   }
 });
