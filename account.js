@@ -1,3 +1,5 @@
+import "./supabase-client.js";
+
 const backend = window.coconibzBackend;
 const message = document.querySelector("#account-message");
 const ordersMessage = document.querySelector("#orders-message");

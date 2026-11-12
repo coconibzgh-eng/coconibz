@@ -22,17 +22,15 @@ Do not make the order, profile, or retailer tables publicly readable. Do not dis
 
 1. In Supabase, open **Project Settings → API**.
 2. Copy the project URL and the **anon / publishable** key.
-3. Put them in `supabase-config.js`:
+3. Copy `.env.example` to `.env` in the project root and fill in the values:
 
-   ```js
-   window.COCONIBZ_SUPABASE_CONFIG = Object.freeze({
-     url: "YOUR_SUPABASE_PROJECT_URL",
-     anonKey: "YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY",
-   });
+   ```dotenv
+   VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
    ```
 
-4. Never put a service-role or secret key in this website. The public key is safe to use here only because the database policies in the SQL setup restrict access.
-5. Serve or deploy the entire project folder, including the new HTML, JavaScript, and SQL files. The Supabase JavaScript client is loaded from jsDelivr, so browsers need internet access to load it.
+4. `.env` is ignored by Git. Never put a service-role or secret key in it; `VITE_` values are included in the browser build, so only use the public publishable key. Database policies must enforce access.
+5. Run `npm install`, then `npm run dev` to start the local Vite server. For deployment, run `npm run build` and publish `dist/`.
 
 ## 4. Create the owner admin account
 
@@ -82,7 +80,7 @@ The additive migration `supabase/migrations/20261112170000_operations_inventory.
 For an existing project that already has the schema from `supabase-schema.sql`, apply the additive migration once. With the Supabase CLI installed and authenticated locally:
 
 ```powershell
-supabase link --project-ref YOUR_PROJECT_REF
+supabase link --project-ref fobtkaxussjzkyrzyrxu
 supabase migration list
 supabase db push
 ```

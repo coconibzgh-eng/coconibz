@@ -1,3 +1,5 @@
+import "./supabase-client.js";
+
 const backend = window.coconibzBackend;
 const portalMessage = document.querySelector("#portal-message");
 const dashboard = document.querySelector("#admin-dashboard");

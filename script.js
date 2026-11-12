@@ -1,3 +1,5 @@
+import "./supabase-client.js";
+
 const WHATSAPP_NUMBER = "233246344188";
 const shopSelect = document.querySelector("#shop-select");
 const pickupShopField = document.querySelector("#pickup-shop-field");

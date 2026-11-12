@@ -1,13 +1,13 @@
-(() => {
-  const config = window.COCONIBZ_SUPABASE_CONFIG;
-  const configured = Boolean(config?.url && config?.anonKey && window.supabase?.createClient);
+import { createClient } from "@supabase/supabase-js";
+import { supabaseConfig } from "./supabase-config.js";
 
-  window.coconibzBackend = {
-    configured,
-    client: configured
-      ? window.supabase.createClient(config.url, config.anonKey, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-      })
-      : null,
-  };
-})();
+const configured = Boolean(supabaseConfig.url && supabaseConfig.anonKey);
+
+window.coconibzBackend = {
+  configured,
+  client: configured
+    ? createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    })
+    : null,
+};

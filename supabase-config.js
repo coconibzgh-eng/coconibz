@@ -1,4 +1,4 @@
-window.COCONIBZ_SUPABASE_CONFIG = Object.freeze({
-  url: "https://xuenlrdmdbfasooryxnk.supabase.co",
-  anonKey: "sb_publishable_IxMrhD8QAPkmlHtkoJiLiw_uQppq_pB",
+export const supabaseConfig = Object.freeze({
+  url: import.meta.env.VITE_SUPABASE_URL || "",
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
 });
