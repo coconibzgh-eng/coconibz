@@ -80,9 +80,9 @@ The additive migration `supabase/migrations/20261112170000_operations_inventory.
 For an existing project that already has the schema from `supabase-schema.sql`, apply the additive migration once. With the Supabase CLI installed and authenticated locally:
 
 ```powershell
-supabase link --project-ref fobtkaxussjzkyrzyrxu
-supabase migration list
-supabase db push
+npx supabase link --project-ref fobtkaxussjzkyrzyrxu
+npx supabase migration list --remote
+npx supabase db push --remote
 ```
 
 Check the migration list before pushing, and do not apply the base schema a second time to an already initialized project. Alternatively, run the additive migration's SQL once in the Supabase SQL Editor. Do not commit access tokens or paste them into chat.
