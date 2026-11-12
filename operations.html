@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Restricted COCONIBZ operations dashboard.">
+  <meta name="theme-color" content="#fffdf8">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Operations | COCONIBZ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="supabase-client.js" defer></script>
+  <script src="operations.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header" id="top">
+    <nav class="nav-shell" aria-label="Main navigation">
+      <a class="wordmark" href="index.html#home" aria-label="COCONIBZ home">COCONIBZ<span class="wordmark-dot">.</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-menu" aria-label="Open navigation menu"><span></span><span></span></button>
+      <div class="nav-menu" id="primary-menu">
+        <div class="nav-links"><a href="index.html#home">Home</a><a href="admin.html">Shop portal</a><a href="account.html">My Orders</a></div>
+        <button class="button button-nav" id="ops-logout" type="button">Log out</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="portal-page">
+    <section class="portal-hero">
+      <p class="eyebrow"><span class="eyebrow-line"></span> COCONIBZ OPERATIONS</p>
+      <h1>Business <em>overview.</em></h1>
+      <p id="ops-role-note">Checking your account permissions...</p>
+    </section>
+    <p class="portal-message" id="ops-message" role="status" aria-live="polite"></p>
+    <section class="ops-dashboard" id="ops-dashboard" hidden>
+      <nav class="ops-tabs" id="ops-tabs" aria-label="Operations sections"></nav>
+      <section class="ops-content portal-card" id="ops-content" aria-live="polite"></section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-main">
+      <div class="footer-brand"><a class="wordmark" href="index.html#home">COCONIBZ<span class="wordmark-dot">.</span></a><p>A little sunshine in every sip.</p></div>
+      <div class="footer-links"><span class="footer-label">TAKE A LOOK</span><a href="index.html#flavors">Our flavors</a><a href="why-coconibz.html">Why Coconibz?</a><a href="index.html#locations">Find a shop</a></div>
+      <div class="footer-contact"><span class="footer-label">SAY HELLO</span><a href="https://wa.me/233246344188" target="_blank" rel="noopener noreferrer">WhatsApp: +233 24 634 4188</a></div>
+    </div>
+    <div class="footer-bottom"><span>© <span id="current-year"></span> COCONIBZ</span><a href="#top">Back to the top ↑</a><span>Made for sunny days.</span></div>
+  </footer>
+</body>
+</html>

@@ -46,7 +46,7 @@ Do not make the order, profile, or retailer tables publicly readable. Do not dis
    where phone = '+233595441825';
    ```
 
-4. Sign out and back in. The **Shop portal** link will appear in the account page.
+4. Sign out and back in. The **Shop portal** link will appear in the account page. Admins can open `operations.html` for stock, payments, retailer sales, feedback, customer summaries, and audit history.
 
 Phone is the sign-in identifier for this site. The supplied `coconibzgh@gmail.com` address is not used by phone/password authentication.
 
@@ -74,4 +74,22 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 - The financial report counts orders marked **completed** as sales; pending, cancelled, and other in-progress requests are excluded.
 - Delivery orders are recorded separately as unassigned deliveries because the site does not currently route deliveries to a specific shop.
 - Order history includes customer names and phone numbers for the customer and their authorized shop/admin. Set an appropriate data-retention policy for your business.
+
+## 7. Enable the operations dashboard
+
+The additive migration `supabase/migrations/20261112170000_operations_inventory.sql` extends the existing shops/orders database with retailer inventory, stock movements, retailer sales, manual payment records, feedback, audit logs, and the operations RPCs.
+
+For an existing project that already has the schema from `supabase-schema.sql`, apply the additive migration once. With the Supabase CLI installed and authenticated locally:
+
+```powershell
+supabase link --project-ref YOUR_PROJECT_REF
+supabase migration list
+supabase db push
+```
+
+Check the migration list before pushing, and do not apply the base schema a second time to an already initialized project. Alternatively, run the additive migration's SQL once in the Supabase SQL Editor. Do not commit access tokens or paste them into chat.
+
+Open `operations.html` while signed in as an admin or assigned retailer. Access is enforced by database row-level security. Retailers see assigned-shop data; admins can manage stock and manual payment statuses, and view audit details. Product pricing remains GHS 12 in both the current site checkout and database order function; update both together before changing the price. Payment statuses are entered manually and do not confirm a Mobile Money transaction. Delivery orders have customer-entered addresses but are not automatically routed to a shop or deducted from shop inventory.
+
+Retailer stock starts at zero until an admin records a restock. Pickup inventory is deducted when an order is marked completed; the order update is rejected if the shop lacks stock. AI performance forecasting and a public customer review form are not enabled.
 
