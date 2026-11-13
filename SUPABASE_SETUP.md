@@ -70,7 +70,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 ## 6. Order and sales behavior
 
 - Customer order requests are saved as **pending** before the site opens WhatsApp. If saving fails, WhatsApp is not opened and an error is shown.
-- Customers can sign in to view their own orders, filter by dates or flavor, sort them, and load older results.
+- Customers can sign in to view their own orders, filter by dates or flavor, sort them, and load older results. They can edit or cancel an order only while its status is **pending** and no payment activity has been recorded; once staff confirm it or a payment is recorded, contact COCONIBZ for help.
 - Admins can view all shops, update order statuses, manage retailer access, and filter order requests.
 - Retailers can view and update orders only for their assigned shop(s). Their read-only Finance tab shows only assigned-shop balances and payment history; payment entry, edits, and other retailers' finance records remain admin-only.
 - The financial report counts orders marked **completed** as sales; pending, cancelled, and other in-progress requests are excluded.
@@ -79,7 +79,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 
 ## 7. Enable the operations dashboard
 
-The additive migrations in `supabase/migrations/` extend the existing shops/orders database with retailer inventory, stock movements, retailer sales, finance and payment records, retailer invite codes, feedback, audit logs, and the operations RPCs.
+The additive migrations in `supabase/migrations/` extend the existing shops/orders database with retailer inventory, stock movements, retailer sales, finance and payment records, retailer invite codes, feedback, audit logs, customer pending-order editing/cancellation, and the operations RPCs.
 
 For an existing project that already has the schema from `supabase-schema.sql`, apply the additive migration once. With the Supabase CLI installed and authenticated locally:
 

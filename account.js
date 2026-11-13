@@ -22,10 +22,27 @@ const profilePhotoImage = document.querySelector("#account-avatar");
 const profilePhotoMessage = document.querySelector("#profile-photo-message");
 const passwordChangeForm = document.querySelector("#password-change-form");
 const passwordChangeMessage = document.querySelector("#password-change-message");
+const editOrderDialog = document.querySelector("#edit-order-dialog");
+const editOrderForm = document.querySelector("#edit-order-form");
+const editOrderFulfillment = document.querySelector("#edit-order-fulfillment");
+const editOrderPickupFields = document.querySelector("#edit-order-pickup-fields");
+const editOrderShop = document.querySelector("#edit-order-shop");
+const editOrderDeliveryFields = document.querySelector("#edit-order-delivery-fields");
+const editOrderDeliveryArea = document.querySelector("#edit-order-delivery-area");
+const editOrderDeliveryAddress = document.querySelector("#edit-order-delivery-address");
+const editOrderMessage = document.querySelector("#edit-order-message");
+const editOrderTotal = document.querySelector("#edit-order-total");
+const editOrderQuantities = {
+  classic: document.querySelector("#edit-order-classic"),
+  dates: document.querySelector("#edit-order-dates"),
+  tigernut: document.querySelector("#edit-order-tigernut"),
+};
 const pageSize = 100;
 const rememberedPhonesKey = "coconibz-remembered-phone-numbers";
 let orderOffset = 0;
 let allOrders = [];
+let orderShops = null;
+let editingOrder = null;
 let hasMoreOrders = true;
 let currentSession = null;
 let currentProfile = null;
@@ -85,6 +102,11 @@ function rememberPhone(phone) {
 
 function formatGhs(amount) {
   return `GHS ${amount}`;
+}
+
+function setOrdersMessage(text, isError = false) {
+  ordersMessage.textContent = text;
+  ordersMessage.classList.toggle("is-error", isError);
 }
 
 function showMessage(text, isError = false) {
@@ -208,17 +230,16 @@ async function loadOrders(reset = false) {
   }
   if (!hasMoreOrders) return;
 
-  ordersMessage.textContent = "Loading your orders...";
+  setOrdersMessage("Loading your orders...");
   loadMoreButton.disabled = true;
   const { data, error } = await backend.client
     .from("orders")
-    .select("id, shop_id, fulfillment, delivery_area, delivery_address, status, subtotal, delivery_fee, total, created_at, shops(name), order_items(product_key, flavor, quantity, unit_price, line_total)")
+    .select("id, shop_id, fulfillment, delivery_area, delivery_address, status, financial_status, subtotal, delivery_fee, total, created_at, shops(name), order_items(product_key, flavor, quantity, unit_price, line_total)")
     .order("created_at", { ascending: false })
     .range(orderOffset, orderOffset + pageSize - 1);
 
   if (error) {
-    ordersMessage.textContent = `Could not load your orders: ${error.message}`;
-    ordersMessage.classList.add("is-error");
+    setOrdersMessage(`Could not load your orders: ${error.message}`, true);
     loadMoreButton.disabled = false;
     return;
   }
@@ -261,6 +282,7 @@ function renderOrders() {
     const flavors = document.createElement("td");
     const total = document.createElement("td");
     const status = document.createElement("td");
+    const actions = document.createElement("td");
 
     date.textContent = new Date(order.created_at).toLocaleString();
     shop.textContent = order.fulfillment === "delivery"
@@ -274,16 +296,114 @@ function renderOrders() {
     statusBadge.className = `order-status status-${order.status}`;
     statusBadge.textContent = order.status;
     status.append(statusBadge);
-    row.append(date, shop, flavors, total, status);
+    if (currentProfile?.role === "customer" && order.status === "pending" && order.financial_status === "pending") {
+      const actionButtons = document.createElement("div");
+      actionButtons.className = "order-action-buttons";
+      const editButton = document.createElement("button");
+      editButton.className = "order-action-button";
+      editButton.type = "button";
+      editButton.textContent = "Edit";
+      editButton.setAttribute("aria-label", `Edit order placed ${new Date(order.created_at).toLocaleString()}`);
+      editButton.addEventListener("click", () => openEditOrder(order));
+      const cancelButton = document.createElement("button");
+      cancelButton.className = "order-action-button order-action-button-cancel";
+      cancelButton.type = "button";
+      cancelButton.textContent = "Cancel";
+      cancelButton.setAttribute("aria-label", `Cancel order placed ${new Date(order.created_at).toLocaleString()}`);
+      cancelButton.addEventListener("click", () => cancelOrder(order, cancelButton));
+      actionButtons.append(editButton, cancelButton);
+      actions.append(actionButtons);
+    } else if (currentProfile?.role === "customer" && order.status === "pending") {
+      actions.textContent = "Contact COCONIBZ";
+    } else {
+      actions.textContent = "—";
+    }
+    row.append(date, shop, flavors, total, status, actions);
     ordersBody.append(row);
   });
 
-  ordersMessage.classList.remove("is-error");
-  ordersMessage.textContent = filteredOrders.length
+  setOrdersMessage(filteredOrders.length
     ? `Showing ${filteredOrders.length} of ${allOrders.length} loaded orders${hasMoreOrders ? ". Load more to include older orders in the filters." : "."}`
     : allOrders.length
       ? "No orders match these filters."
-      : "No saved order requests yet. Select your flavors and order to get started.";
+      : "No saved order requests yet. Select your flavors and order to get started.");
+}
+
+async function loadOrderShops() {
+  if (orderShops) return orderShops;
+  const { data, error } = await backend.client
+    .from("shops")
+    .select("id, name")
+    .order("name");
+  if (error) throw error;
+  orderShops = data;
+  return orderShops;
+}
+
+function updateEditOrderFields() {
+  const isDelivery = editOrderFulfillment.value === "delivery";
+  editOrderPickupFields.hidden = isDelivery;
+  editOrderDeliveryFields.hidden = !isDelivery;
+  editOrderShop.required = !isDelivery;
+  editOrderDeliveryArea.required = isDelivery;
+  editOrderDeliveryAddress.required = isDelivery;
+
+  const subtotal = Object.values(editOrderQuantities)
+    .reduce((sum, input) => sum + Number(input.value || 0) * 12, 0);
+  const deliveryFee = isDelivery
+    ? Number(editOrderDeliveryArea.selectedOptions[0]?.dataset.fee || 0)
+    : 0;
+  editOrderTotal.textContent = `Subtotal: ${formatGhs(subtotal)} · Delivery: ${formatGhs(deliveryFee)} · Total: ${formatGhs(subtotal + deliveryFee)}`;
+}
+
+async function openEditOrder(order) {
+  if (order.status !== "pending") {
+    setOrdersMessage("Only pending orders can be edited.", true);
+    return;
+  }
+  try {
+    const shops = await loadOrderShops();
+    editOrderShop.replaceChildren(
+      new Option("Choose a pickup shop", ""),
+      ...shops.map((shop) => new Option(shop.name, shop.id))
+    );
+    editingOrder = order;
+    editOrderFulfillment.value = order.fulfillment;
+    editOrderShop.value = order.shop_id || "";
+    editOrderDeliveryArea.value = order.delivery_area || "";
+    editOrderDeliveryAddress.value = order.delivery_address || "";
+    Object.entries(editOrderQuantities).forEach(([productKey, input]) => {
+      const item = order.order_items.find((orderItem) => orderItem.product_key === productKey);
+      input.value = String(item?.quantity || 0);
+    });
+    editOrderMessage.textContent = "";
+    editOrderMessage.classList.remove("is-error");
+    updateEditOrderFields();
+    editOrderDialog.showModal();
+    editOrderFulfillment.focus();
+  } catch (error) {
+    setOrdersMessage(`Could not open the order editor: ${error.message}`, true);
+  }
+}
+
+async function cancelOrder(order, button) {
+  if (!window.confirm("Cancel this pending order? This cannot be undone.")) return;
+  button.disabled = true;
+  setOrdersMessage("Cancelling your order...");
+  try {
+    const { error } = await backend.client.rpc("coconibz_customer_cancel_order", {
+      p_order_id: order.id,
+    });
+    if (error) throw error;
+    await loadOrders(true);
+    if (!ordersMessage.classList.contains("is-error")) {
+      setOrdersMessage("Your order was cancelled.");
+    }
+  } catch (error) {
+    setOrdersMessage(`Could not cancel your order: ${error.message}`, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 signupForm.addEventListener("submit", async (event) => {
@@ -532,6 +652,63 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
   requestedNext = null;
   showMessage("You have been logged out.");
   await showSignedInAccount(null);
+});
+
+editOrderForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!editingOrder) return;
+  setBusy(editOrderForm, true);
+  setInlineMessage(editOrderMessage, "");
+
+  try {
+    const items = Object.entries(editOrderQuantities)
+      .map(([productKey, input]) => ({ product_key: productKey, quantity: Number(input.value) }))
+      .filter((item) => item.quantity > 0);
+    if (!items.length) throw new Error("Keep at least one flavor in your order.");
+    if (items.some((item) => !Number.isInteger(item.quantity) || item.quantity > 20)) {
+      throw new Error("Each flavor quantity must be a whole number between 1 and 20.");
+    }
+
+    const isDelivery = editOrderFulfillment.value === "delivery";
+    const { error } = await backend.client.rpc("coconibz_customer_update_order", {
+      p_order_id: editingOrder.id,
+      p_shop_id: isDelivery ? null : editOrderShop.value,
+      p_fulfillment: editOrderFulfillment.value,
+      p_delivery_area: isDelivery ? editOrderDeliveryArea.value : null,
+      p_delivery_address: isDelivery ? editOrderDeliveryAddress.value.trim() : null,
+      p_items: items,
+    });
+    if (error) throw error;
+
+    editOrderDialog.close();
+    await loadOrders(true);
+    if (!ordersMessage.classList.contains("is-error")) {
+      setOrdersMessage("Your order changes were saved and the total was recalculated.");
+    }
+  } catch (error) {
+    setInlineMessage(editOrderMessage, `Could not save your order changes: ${error.message}`, true);
+    if (error.message.includes("Only pending orders can be edited")) {
+      editOrderDialog.close();
+      await loadOrders(true);
+      setOrdersMessage(error.message, true);
+    }
+  } finally {
+    setBusy(editOrderForm, false);
+  }
+});
+
+document.querySelector("#close-edit-order").addEventListener("click", () => editOrderDialog.close());
+document.querySelector("#keep-order-button").addEventListener("click", () => editOrderDialog.close());
+editOrderDialog.addEventListener("close", () => {
+  editingOrder = null;
+  editOrderForm.reset();
+  editOrderMessage.textContent = "";
+  editOrderMessage.classList.remove("is-error");
+});
+editOrderFulfillment.addEventListener("change", updateEditOrderFields);
+editOrderDeliveryArea.addEventListener("change", updateEditOrderFields);
+Object.values(editOrderQuantities).forEach((input) => {
+  input.addEventListener("input", updateEditOrderFields);
 });
 
 loadMoreButton.addEventListener("click", () => loadOrders());
