@@ -19,6 +19,7 @@ import "./supabase-client.js";
     sales: "Retail sales",
     orders: "Orders & deliveries",
     payments: "Payments",
+    finance: "Finance",
     customers: "Customers",
     feedback: "Customer feedback",
     audit: "Audit log",
@@ -162,6 +163,7 @@ import "./supabase-client.js";
       else if (state.page === "sales") await renderSales();
       else if (state.page === "orders") await renderOrders();
       else if (state.page === "payments") await renderPayments();
+      else if (state.page === "finance") await renderFinance();
       else if (state.page === "customers") await renderCustomers();
       else if (state.page === "feedback") await renderFeedback();
       else if (state.page === "audit") await renderAudit();
@@ -499,6 +501,129 @@ import "./supabase-client.js";
     );
   }
 
+  async function renderFinance() {
+    const [summaryResult, payments] = await Promise.all([
+      backend.client.rpc("coconibz_retailer_finance_summary"),
+      loadRows("retailer_payments", "shop_id,amount,paid_at,note,created_at", (query) =>
+        query.order("paid_at", { ascending: false }).order("created_at", { ascending: false })),
+    ]);
+    if (summaryResult.error) throw summaryResult.error;
+
+    const summaries = summaryResult.data || [];
+    const balances = new Map(summaries.map((item) => [item.shop_id, Number(item.balance_due)]));
+    const summaryRows = summaries.map((item) => row([
+      shopName(item.shop_id),
+      Number(item.opening_units),
+      money(item.opening_balance),
+      Number(item.supplied_units),
+      money(item.supply_value),
+      money(item.total_due),
+      money(item.total_paid),
+      money(item.balance_due),
+    ]));
+    const shop = select(availableShopOptions());
+    const amount = input("number", "0.00");
+    amount.min = "0.01";
+    amount.step = "0.01";
+    amount.required = true;
+    const paidAt = input("date");
+    paidAt.required = true;
+    const today = new Date();
+    paidAt.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const note = input("text", "Optional payment note or reference");
+    const preview = node("p", "ops-finance-preview");
+    const feedback = node("p", "ops-form-message");
+    const save = node("button", "button button-primary", "Record payment");
+    save.type = "submit";
+    function updateBalancePreview() {
+      const currentBalance = balances.get(shop.value) || 0;
+      const payment = Number(amount.value);
+      if (!amount.value || !Number.isFinite(payment) || payment <= 0) {
+        preview.textContent = `Current balance: ${money(currentBalance)}`;
+        return;
+      }
+      const balanceAfter = currentBalance - payment;
+      preview.textContent = balanceAfter < 0
+        ? `Credit after payment: ${money(Math.abs(balanceAfter))}`
+        : `Balance after payment: ${money(balanceAfter)}`;
+    }
+    shop.addEventListener("change", updateBalancePreview);
+    amount.addEventListener("input", updateBalancePreview);
+    updateBalancePreview();
+
+    const form = node("form", "ops-form");
+    form.append(
+      field("Retailer / shop", shop),
+      field("Amount paid (GHS)", amount),
+      field("Payment date", paidAt),
+      field("Note / reference", note),
+      preview,
+      feedback,
+      save
+    );
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      feedback.classList.remove("is-error");
+      feedback.textContent = "";
+      const amountText = amount.value.trim();
+      if (!/^\d+(?:\.\d{1,2})?$/.test(amountText) || Number(amountText) <= 0) {
+        showError(new Error("Enter a payment amount greater than zero with no more than two decimal places."), feedback);
+        return;
+      }
+      if (!paidAt.value) {
+        showError(new Error("Choose the payment date."), feedback);
+        return;
+      }
+
+      save.disabled = true;
+      try {
+        const { error } = await backend.client.rpc("coconibz_record_retailer_payment", {
+          p_shop_id: shop.value,
+          p_amount: amountText,
+          p_paid_at: paidAt.value,
+          p_note: note.value.trim() || null,
+        });
+        if (error) {
+          showError(error, feedback);
+          return;
+        }
+        setMessage("Retailer payment recorded and balance updated.");
+        await renderPage();
+      } catch (error) {
+        showError(error, feedback);
+      } finally {
+        save.disabled = false;
+      }
+    });
+
+    const paymentRows = payments.map((payment) => {
+      const [year, month, day] = payment.paid_at.split("-").map(Number);
+      const paymentDate = new Date(year, month - 1, day).toLocaleDateString();
+      return row([
+        paymentDate,
+        shopName(payment.shop_id),
+        money(payment.amount),
+        payment.note,
+      ]);
+    });
+    content.replaceChildren(
+      card(
+        "Retailer balances",
+        makeTable(
+          ["Retailer / shop", "Opening stock (bottles)", "Opening balance", "New stock supplied (bottles)", "New supply value", "Total charged", "Payments received", "Balance left"],
+          summaryRows,
+          "No retailer accounts are available."
+        ),
+        "Opening balances value stock on hand at Finance setup using current retailer rates and assume it is unpaid. New restocks are added at their saved wholesale value; retailer sales do not reduce the balance."
+      ),
+      card("Record retailer payment", form, "Enter the amount, date, and optional reference. The balance preview updates before saving."),
+      card(
+        "Payment history",
+        makeTable(["Payment date", "Retailer / shop", "Amount paid", "Note / reference"], paymentRows, "No retailer payments have been recorded.")
+      )
+    );
+  }
+
   async function renderOrders() {
     const orders = await loadRows(
       "orders",
@@ -722,7 +847,7 @@ import "./supabase-client.js";
 
   function renderTabs() {
     const pages = state.profile.role === "admin"
-      ? ["overview", "inventory", "sales", "orders", "payments", "customers", "feedback", "audit"]
+      ? ["overview", "inventory", "sales", "orders", "payments", "finance", "customers", "feedback", "audit"]
       : ["overview", "inventory", "sales", "orders", "feedback"];
     tabs.replaceChildren();
     pages.forEach((page) => {
@@ -802,6 +927,7 @@ import "./supabase-client.js";
       .on("postgres_changes", { event: "*", schema: "public", table: "shop_inventory" }, () => renderPage())
       .on("postgres_changes", { event: "*", schema: "public", table: "retailer_sales" }, () => renderPage())
       .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => renderPage())
+      .on("postgres_changes", { event: "*", schema: "public", table: "retailer_payments" }, () => renderPage())
       .on("postgres_changes", { event: "*", schema: "public", table: "customer_feedback" }, () => renderPage())
       .subscribe((status) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
