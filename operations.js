@@ -435,11 +435,15 @@ import "./supabase-client.js";
   }
 
   async function renderSales() {
-    const [sales, items, products] = await Promise.all([
+    const [sales, items, products, inventory] = await Promise.all([
       loadRows("retailer_sales", "id,shop_id,total_amount,payment_method,note,sold_at,recorded_by", (query) => query.order("sold_at", { ascending: false }).limit(100)),
       loadRows("retailer_sale_items", "sale_id,product_key,product_name,quantity,line_total"),
       loadRows("coconibz_products", "product_key,name,unit_price,is_active", (query) => query.eq("is_active", true).order("name")),
+      loadRows("shop_inventory", "shop_id,product_key,quantity_on_hand"),
     ]);
+    const availableByShopProduct = new Map(
+      inventory.map((item) => [`${item.shop_id}:${item.product_key}`, Number(item.quantity_on_hand)])
+    );
     const itemGroups = new Map();
     items.forEach((item) => {
       const group = itemGroups.get(item.sale_id) || [];
@@ -451,6 +455,7 @@ import "./supabase-client.js";
     const method = select([["", "Payment method not recorded"], ["cash", "Cash"], ["mobile_money", "Mobile Money"], ["other", "Other"]]);
     const note = input("text", "Optional sale note");
     const quantityInputs = new Map();
+    const availabilityLabels = new Map();
     const productFields = node("div", "ops-product-quantities");
     products.forEach((product) => {
       const quantity = input("number", "0");
@@ -458,9 +463,26 @@ import "./supabase-client.js";
       quantity.step = "1";
       quantity.value = "0";
       quantity.className = "ops-quantity";
+      const availability = node("small", "ops-subline");
+      const productField = field(`${product.name} · ${money(product.unit_price)}`, quantity);
+      productField.append(availability);
       quantityInputs.set(product.product_key, quantity);
-      productFields.append(field(`${product.name} · ${money(product.unit_price)}`, quantity));
+      availabilityLabels.set(product.product_key, availability);
+      productFields.append(productField);
     });
+    function availableStock(productKey) {
+      return availableByShopProduct.get(`${shop.value}:${productKey}`) || 0;
+    }
+    function updateAvailability() {
+      products.forEach((product) => {
+        const available = availableStock(product.product_key);
+        quantityInputs.get(product.product_key).max = String(available);
+        availabilityLabels.get(product.product_key).textContent =
+          `${available} bottle${available === 1 ? "" : "s"} available`;
+      });
+    }
+    shop.addEventListener("change", updateAvailability);
+    updateAvailability();
     const feedback = node("p", "ops-form-message");
     const save = node("button", "button button-primary", "Record sale and update stock");
     save.type = "submit";
@@ -472,6 +494,19 @@ import "./supabase-client.js";
         .filter((item) => item.quantity > 0);
       if (!saleItems.length) {
         showError({ message: "Enter a quantity for at least one product." }, feedback);
+        return;
+      }
+      const invalidQuantity = saleItems.find((item) => !Number.isInteger(item.quantity));
+      if (invalidQuantity) {
+        showError({ message: "Sale quantities must be whole numbers of bottles." }, feedback);
+        return;
+      }
+      const insufficientStock = saleItems.find((item) => item.quantity > availableStock(item.product_key));
+      if (insufficientStock) {
+        const product = products.find((item) => item.product_key === insufficientStock.product_key);
+        showError({
+          message: `Not enough ${product?.name || "product"} in stock: ${availableStock(insufficientStock.product_key)} available, ${insufficientStock.quantity} requested.`,
+        }, feedback);
         return;
       }
       save.disabled = true;
