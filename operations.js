@@ -13,6 +13,7 @@ import "./supabase-client.js";
     page: "overview",
     channel: null,
     createdRetailerInvite: null,
+    preferredInviteShopId: null,
   };
   const pageNames = {
     overview: "Overview",
@@ -846,6 +847,72 @@ import "./supabase-client.js";
       return;
     }
 
+    const shopNameInput = input("text", "Shop name");
+    shopNameInput.required = true;
+    shopNameInput.maxLength = 120;
+    const shopAddressInput = input("text", "Street address, landmark, or GPS pin");
+    shopAddressInput.required = true;
+    shopAddressInput.maxLength = 240;
+    const shopWhatsappInput = input("tel", "+233...");
+    const shopMapInput = input("url", "https://maps.google.com/...");
+    shopMapInput.pattern = "https://.+";
+    shopMapInput.title = "Enter an HTTPS map link";
+    const shopHoursInput = input("text", "e.g. Mon-Sat, 8am-6pm");
+    shopHoursInput.maxLength = 120;
+    const shopPriceInput = input("number", "12.00");
+    shopPriceInput.min = "0.01";
+    shopPriceInput.step = "0.01";
+    shopPriceInput.value = "12.00";
+    shopPriceInput.required = true;
+    const shopCreateFeedback = node("p", "ops-form-message");
+    const shopCreateButton = node("button", "button button-primary", "Create shop");
+    shopCreateButton.type = "submit";
+    const shopCreateForm = node("form", "ops-form");
+    shopCreateForm.append(
+      field("Shop name", shopNameInput),
+      field("Location / address", shopAddressInput),
+      field("WhatsApp number (optional)", shopWhatsappInput),
+      field("Google Maps link (optional)", shopMapInput),
+      field("Opening hours (optional)", shopHoursInput),
+      field("Wholesale price per bottle (GHS)", shopPriceInput),
+      shopCreateFeedback,
+      shopCreateButton
+    );
+    shopCreateForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      shopCreateFeedback.classList.remove("is-error");
+      shopCreateFeedback.textContent = "";
+      shopCreateButton.disabled = true;
+      try {
+        const { data: shopId, error } = await backend.client.rpc("coconibz_admin_create_shop", {
+          p_name: shopNameInput.value.trim(),
+          p_address: shopAddressInput.value.trim(),
+          p_whatsapp_number: shopWhatsappInput.value.trim() || null,
+          p_map_url: shopMapInput.value.trim() || null,
+          p_opening_hours: shopHoursInput.value.trim() || null,
+          p_wholesale_price: shopPriceInput.value,
+        });
+        if (error) {
+          showError(error, shopCreateFeedback);
+          return;
+        }
+        if (typeof shopId !== "string" || !shopId) {
+          showError(new Error("The shop was created, but its ID was not returned. Reload the page before creating another shop."), shopCreateFeedback);
+          return;
+        }
+        const createdShopName = shopNameInput.value.trim();
+        state.shops = [...state.shops, { id: shopId, name: createdShopName }]
+          .sort((left, right) => left.name.localeCompare(right.name));
+        state.preferredInviteShopId = shopId;
+        setMessage(`Shop "${createdShopName}" created. It is ready for retailer assignments and public pickup.`);
+        await renderPage();
+      } catch (error) {
+        showError(error, shopCreateFeedback);
+      } finally {
+        shopCreateButton.disabled = false;
+      }
+    });
+
     const [retailerResult, invites] = await Promise.all([
       backend.client.rpc("coconibz_admin_list_retailers"),
       loadRows("retailer_invite_codes", "id,shop_id,created_at,used_at,revoked_at", (query) =>
@@ -854,6 +921,7 @@ import "./supabase-client.js";
     if (retailerResult.error) throw retailerResult.error;
 
     const inviteShop = select(availableShopOptions());
+    if (state.preferredInviteShopId) inviteShop.value = state.preferredInviteShopId;
     const createFeedback = node("p", "ops-form-message");
     const createButton = node("button", "button button-primary", "Create one-time code");
     createButton.type = "submit";
@@ -925,6 +993,7 @@ import "./supabase-client.js";
     existingPhone.title = "Use international format, for example +233241234567";
     existingPhone.required = true;
     const existingShop = select(availableShopOptions());
+    if (state.preferredInviteShopId) existingShop.value = state.preferredInviteShopId;
     const existingFeedback = node("p", "ops-form-message");
     const addButton = node("button", "button button-primary", "Grant retailer access");
     addButton.type = "submit";
@@ -1032,6 +1101,7 @@ import "./supabase-client.js";
     });
 
     content.replaceChildren(
+      card("Create a shop", shopCreateForm, "New shops are added to the pickup list with inventory, finance tracking, and the selected wholesale rate. Create a retailer invite code below to assign the shop."),
       card("Invite a new retailer", inviteBody, "Codes are one-time, tied to the selected shop, and stored securely. They are only displayed when first created."),
       card("Add an existing account", existingForm, "Grant access to a verified customer account by phone. Additional shop assignments can be added separately."),
       card("Retailer accounts", makeTable(

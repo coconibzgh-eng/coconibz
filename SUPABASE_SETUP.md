@@ -50,7 +50,7 @@ Phone is the sign-in identifier for this site. The supplied `coconibzgh@gmail.co
 
 ## 5. Create and assign retailer accounts
 
-For a new retailer, sign in as an admin, open `operations.html` -> **Retailers**, choose the shop, and create a one-time invite code. Share the code with the retailer. They can enter it while signing up at `account.html`, verify their phone by SMS, and receive access to that shop. Existing customers can redeem a code from their signed-in account page.
+For a new retailer, sign in as an admin and open `operations.html` -> **Retailers**. To add a location, use **Create a shop** and enter its name and address; WhatsApp, map link, and hours are optional, and the wholesale price defaults to GHS 12 per bottle. The new shop is added to the public pickup list and initialized for stock and finance tracking. Then choose it and create a one-time invite code. Share the code with the retailer. They can enter the code while signing up at `account.html`, verify their phone by SMS, and receive access to that shop. Existing customers can redeem a code from their signed-in account page.
 
 Admins can also grant access to an existing verified account by phone in the **Retailers** tab. To remove retailer access, use **Remove access** there; the account becomes a customer, while the shop listing, account, orders, stock, and financial history are retained. Unused invite codes can be revoked and replaced. Codes are shown only once.
 

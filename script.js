@@ -3,6 +3,9 @@ import "./supabase-client.js";
 const WHATSAPP_NUMBER = "233246344188";
 const shopSelect = document.querySelector("#shop-select");
 const pickupShopField = document.querySelector("#pickup-shop-field");
+const locationGrid = document.querySelector(".location-grid");
+const locationsSubtitle = document.querySelector("#locations-subtitle");
+const shopLoadStatus = document.querySelector("#shop-load-status");
 const deliveryDetails = document.querySelector("#delivery-details");
 const deliveryArea = document.querySelector("#delivery-area");
 const deliveryLocation = document.querySelector("#delivery-location");
@@ -284,7 +287,7 @@ useLocationButton.addEventListener("click", () => {
     useLocationButton.disabled = false;
   }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
 });
-document.querySelectorAll(".location-card").forEach((card) => {
+function registerLocationCard(card) {
   const shopName = card.querySelector("h3").textContent.trim();
   const address = card.querySelector("[data-shop-address]").dataset.shopAddress.trim();
   const shopValue = address ? `${shopName} - ${address}` : shopName;
@@ -301,12 +304,90 @@ document.querySelectorAll(".location-card").forEach((card) => {
   const directionsLink = card.querySelector(".directions-link");
   const mapQuery = address ? `${shopName}, ${address}` : shopName;
   directionsLink.href = card.dataset.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
-});
+}
 
-restorePendingOrder();
-updateWhatsAppLinks();
-updateFulfillmentFields();
-updateCombinedOrder();
+function addPublicShopCard(shop, index) {
+  const card = document.createElement("article");
+  card.className = "location-card reveal is-visible";
+  card.dataset.shopId = shop.id;
+  if (shop.map_url) card.dataset.mapUrl = shop.map_url;
+
+  const locationIndex = document.createElement("span");
+  locationIndex.className = "location-index";
+  locationIndex.textContent = String(index).padStart(2, "0");
+
+  const details = document.createElement("div");
+  const name = document.createElement("h3");
+  name.textContent = shop.name;
+  const address = document.createElement("p");
+  address.dataset.shopAddress = shop.address || "";
+  address.textContent = shop.address || "Address/GPS pin to be added";
+  details.append(name, address);
+
+  const whatsappNumber = String(shop.whatsapp_number || "").replace(/\D/g, "");
+  if (whatsappNumber) {
+    const whatsapp = document.createElement("a");
+    whatsapp.className = "shop-whatsapp";
+    whatsapp.href = makeWhatsAppUrl(
+      `Hello, I would like to order from COCONIBZ at ${shop.name}. Please share the details.`,
+      whatsappNumber
+    );
+    whatsapp.target = "_blank";
+    whatsapp.rel = "noopener noreferrer";
+    whatsapp.textContent = `WhatsApp: +${whatsappNumber}`;
+    details.append(whatsapp);
+  }
+
+  const hours = document.createElement("span");
+  hours.className = "opening-hours";
+  hours.textContent = shop.opening_hours || "Hours to be confirmed";
+  details.append(hours);
+
+  const directions = document.createElement("a");
+  directions.className = "directions-link";
+  directions.target = "_blank";
+  directions.rel = "noopener noreferrer";
+  directions.setAttribute("aria-label", `Get directions to ${shop.name}`);
+  directions.textContent = "↗";
+  card.append(locationIndex, details, directions);
+  locationGrid.append(card);
+  registerLocationCard(card);
+}
+
+async function initializePublicPickupOptions() {
+  const existingShopIds = new Set(
+    [...locationGrid.querySelectorAll(".location-card")].map((card) => card.dataset.shopId)
+  );
+  if (backend?.configured) {
+    const { data, error } = await backend.client
+      .from("shops")
+      .select("id,name,whatsapp_number,address,map_url,opening_hours")
+      .order("name");
+    if (error) {
+      shopLoadStatus.textContent = `Could not load additional pickup shops. ${error.message}`;
+    } else {
+      (data || []).filter((shop) => !existingShopIds.has(shop.id)).forEach((shop) => {
+        addPublicShopCard(shop, locationGrid.children.length + 1);
+      });
+    }
+  }
+  const shopCount = locationGrid.querySelectorAll(".location-card").length;
+  locationsSubtitle.textContent = `${shopCount} ${shopCount === 1 ? "spot" : "spots"} to find your new favorite sip.`;
+  restorePendingOrder();
+  updateWhatsAppLinks();
+  updateFulfillmentFields();
+  updateCombinedOrder();
+}
+
+document.querySelectorAll(".location-card").forEach(registerLocationCard);
+
+initializePublicPickupOptions().catch((error) => {
+  shopLoadStatus.textContent = `Could not load pickup shops. ${error.message}`;
+  restorePendingOrder();
+  updateWhatsAppLinks();
+  updateFulfillmentFields();
+  updateCombinedOrder();
+});
 
 if (backend?.configured) {
   backend.client.auth.getSession().then(({ data, error }) => {
