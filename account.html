@@ -33,7 +33,7 @@
     </section>
 
     <p class="portal-message" id="account-message" role="status" aria-live="polite"></p>
-    <p class="portal-message" id="staff-access-note" hidden>New accounts start as customers. Admin or retailer access must be assigned by a COCONIBZ admin.</p>
+    <p class="portal-message" id="staff-access-note" hidden>Retailer access requires a one-time code from a COCONIBZ admin. Admin accounts are assigned separately.</p>
 
     <section class="auth-grid" id="auth-panel" aria-label="Sign in or create an account">
       <form class="portal-card auth-form" id="signup-form">
@@ -43,6 +43,8 @@
         <input id="signup-name" name="full_name" autocomplete="name" required maxlength="100">
         <label for="signup-phone">Phone number</label>
         <input id="signup-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}" title="Use international format, for example +233241234567">
+        <label for="signup-retailer-code">Retailer invite code <span>(optional)</span></label>
+        <input id="signup-retailer-code" name="retailer_code" autocomplete="off" placeholder="Enter a code from your admin">
         <label for="signup-password">Password</label>
         <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
         <button class="button button-primary" type="submit">Create account</button>
@@ -73,6 +75,15 @@
         <div><p class="eyebrow"><span class="eyebrow-line"></span> ORDER HISTORY</p><h2 id="account-welcome">Your orders</h2></div>
         <div class="account-actions"><a class="button button-account-admin" id="admin-portal-link" href="admin.html" hidden>Shop portal</a><button class="button button-logout" id="logout-button" type="button">Log out</button></div>
       </div>
+      <form class="account-retailer-invite" id="account-retailer-invite-form" hidden>
+        <h3>Activate retailer access</h3>
+        <p>Have a one-time code from a COCONIBZ admin? Enter it here to open your retailer portal.</p>
+        <label for="account-retailer-code">Retailer invite code</label>
+        <div class="account-retailer-invite-controls">
+          <input id="account-retailer-code" name="retailer_code" autocomplete="off" required placeholder="CNZ-...">
+          <button class="button button-primary" type="submit">Redeem code</button>
+        </div>
+      </form>
       <p class="portal-subtitle">Order requests appear here after they are saved. WhatsApp orders are sent separately for shop confirmation.</p>
       <div class="order-filters">
         <label for="filter-start">From date<input id="filter-start" type="date"></label>

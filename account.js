@@ -9,6 +9,7 @@ const staffAccessNote = document.querySelector("#staff-access-note");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
 const otpForm = document.querySelector("#otp-form");
+const accountRetailerInviteForm = document.querySelector("#account-retailer-invite-form");
 const resendOtpButton = document.querySelector("#resend-otp-button");
 const ordersBody = document.querySelector("#orders-body");
 const loadMoreButton = document.querySelector("#load-more-orders");
@@ -19,6 +20,7 @@ let hasMoreOrders = true;
 let currentSession = null;
 let requestedNext = new URLSearchParams(window.location.search).get("next");
 let pendingPhone = "";
+let pendingRetailerCode = "";
 
 staffAccessNote.hidden = !["operations.html", "admin.html"].includes(requestedNext);
 
@@ -82,8 +84,36 @@ async function showSignedInAccount(session) {
   accountPanel.hidden = false;
   document.querySelector("#account-welcome").textContent = `Hello, ${profile.full_name || "Coconibz customer"}`;
   document.querySelector("#admin-portal-link").hidden = !["admin", "retailer"].includes(profile.role);
+  accountRetailerInviteForm.hidden = profile.role !== "customer";
   if (continueAfterAuth()) return;
   await loadOrders(true);
+}
+
+async function completeSignup(session) {
+  if (pendingRetailerCode) {
+    const retailerCode = pendingRetailerCode;
+    pendingRetailerCode = "";
+    let inviteError = null;
+    try {
+      const { error } = await backend.client.rpc("coconibz_redeem_retailer_invite", {
+        p_code: retailerCode,
+      });
+      inviteError = error;
+    } catch (error) {
+      inviteError = error;
+    }
+    if (inviteError) {
+      requestedNext = null;
+      await showSignedInAccount(session);
+      document.querySelector("#account-retailer-code").value = retailerCode;
+      showMessage(`Your account was created, but retailer access was not granted: ${inviteError.message}. Check the code or contact your admin.`, true);
+      return;
+    }
+    showMessage("Retailer access granted. Your account is ready.");
+  } else {
+    showMessage("Your account is ready.");
+  }
+  await showSignedInAccount(session);
 }
 
 async function loadOrders(reset = false) {
@@ -178,6 +208,7 @@ signupForm.addEventListener("submit", async (event) => {
   showMessage("Creating your account...");
   const formData = new FormData(signupForm);
   pendingPhone = normalizePhone(String(formData.get("phone")));
+  pendingRetailerCode = String(formData.get("retailer_code") || "").trim();
 
   try {
     const { data, error } = await backend.client.auth.signUp({
@@ -187,8 +218,7 @@ signupForm.addEventListener("submit", async (event) => {
     });
     if (error) throw error;
     if (data.session) {
-      showMessage("Your account is ready.");
-      await showSignedInAccount(data.session);
+      await completeSignup(data.session);
       return;
     }
 
@@ -198,6 +228,7 @@ signupForm.addEventListener("submit", async (event) => {
     otpForm.hidden = false;
     showMessage("Enter the SMS code to verify your phone.");
   } catch (error) {
+    pendingRetailerCode = "";
     showMessage(`Could not create your account: ${error.message}`, true);
     setBusy(signupForm, false);
   }
@@ -216,11 +247,30 @@ otpForm.addEventListener("submit", async (event) => {
       type: "sms",
     });
     if (error) throw error;
-    showMessage("Phone verified successfully.");
-    await showSignedInAccount(data.session);
+    await completeSignup(data.session);
   } catch (error) {
     showMessage(`Could not verify the code: ${error.message}`, true);
     setBusy(otpForm, false);
+  }
+});
+
+accountRetailerInviteForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(accountRetailerInviteForm, true);
+  showMessage("Redeeming retailer code...");
+  const formData = new FormData(accountRetailerInviteForm);
+  const code = String(formData.get("retailer_code")).trim();
+
+  try {
+    const { error } = await backend.client.rpc("coconibz_redeem_retailer_invite", {
+      p_code: code,
+    });
+    if (error) throw error;
+    showMessage("Retailer access granted.");
+    await showSignedInAccount(currentSession);
+  } catch (error) {
+    showMessage(`Could not redeem retailer code: ${error.message}`, true);
+    setBusy(accountRetailerInviteForm, false);
   }
 });
 

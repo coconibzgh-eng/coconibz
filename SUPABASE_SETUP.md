@@ -50,7 +50,9 @@ Phone is the sign-in identifier for this site. The supplied `coconibzgh@gmail.co
 
 ## 5. Create and assign retailer accounts
 
-Each retailer should first join at `account.html` using their phone and verify it by SMS. Then, sign in as the owner admin, open `admin.html`, enter their phone, select their assigned shop(s), and choose **Save retailer access**.
+For a new retailer, sign in as an admin, open `operations.html` -> **Retailers**, choose the shop, and create a one-time invite code. Share the code with the retailer. They can enter it while signing up at `account.html`, verify their phone by SMS, and receive access to that shop. Existing customers can redeem a code from their signed-in account page.
+
+Admins can also grant access to an existing verified account by phone in the **Retailers** tab. To remove retailer access, use **Remove access** there; the account becomes a customer, while the shop listing, account, orders, stock, and financial history are retained. Unused invite codes can be revoked and replaced. Codes are shown only once.
 
 The current shop assignments are:
 
@@ -67,7 +69,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 
 - Customer order requests are saved as **pending** before the site opens WhatsApp. If saving fails, WhatsApp is not opened and an error is shown.
 - Customers can sign in to view their own orders, filter by dates or flavor, sort them, and load older results.
-- Admins can view all shops, update order statuses, assign retailer access, and filter order requests.
+- Admins can view all shops, update order statuses, manage retailer access, and filter order requests.
 - Retailers can view and update orders only for their assigned shop(s). They do not receive the all-shop financial summary.
 - The financial report counts orders marked **completed** as sales; pending, cancelled, and other in-progress requests are excluded.
 - Delivery orders are recorded separately as unassigned deliveries because the site does not currently route deliveries to a specific shop.
@@ -75,7 +77,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 
 ## 7. Enable the operations dashboard
 
-The additive migration `supabase/migrations/20261112170000_operations_inventory.sql` extends the existing shops/orders database with retailer inventory, stock movements, retailer sales, manual payment records, feedback, audit logs, and the operations RPCs.
+The additive migrations in `supabase/migrations/` extend the existing shops/orders database with retailer inventory, stock movements, retailer sales, finance and payment records, retailer invite codes, feedback, audit logs, and the operations RPCs.
 
 For an existing project that already has the schema from `supabase-schema.sql`, apply the additive migration once. With the Supabase CLI installed and authenticated locally:
 

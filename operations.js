@@ -12,6 +12,7 @@ import "./supabase-client.js";
     shops: [],
     page: "overview",
     channel: null,
+    createdRetailerInvite: null,
   };
   const pageNames = {
     overview: "Overview",
@@ -20,6 +21,7 @@ import "./supabase-client.js";
     orders: "Orders & deliveries",
     payments: "Payments",
     finance: "Finance",
+    retailers: "Retailers",
     customers: "Customers",
     feedback: "Customer feedback",
     audit: "Audit log",
@@ -164,6 +166,7 @@ import "./supabase-client.js";
       else if (state.page === "orders") await renderOrders();
       else if (state.page === "payments") await renderPayments();
       else if (state.page === "finance") await renderFinance();
+      else if (state.page === "retailers") await renderRetailers();
       else if (state.page === "customers") await renderCustomers();
       else if (state.page === "feedback") await renderFeedback();
       else if (state.page === "audit") await renderAudit();
@@ -751,6 +754,213 @@ import "./supabase-client.js";
     );
   }
 
+  async function renderRetailers() {
+    if (state.profile.role !== "admin") {
+      content.replaceChildren(node("p", "portal-message is-error", "Retailer management is restricted to admins."));
+      return;
+    }
+
+    const [retailerResult, invites] = await Promise.all([
+      backend.client.rpc("coconibz_admin_list_retailers"),
+      loadRows("retailer_invite_codes", "id,shop_id,created_at,used_at,revoked_at", (query) =>
+        query.order("created_at", { ascending: false })),
+    ]);
+    if (retailerResult.error) throw retailerResult.error;
+
+    const inviteShop = select(availableShopOptions());
+    const createFeedback = node("p", "ops-form-message");
+    const createButton = node("button", "button button-primary", "Create one-time code");
+    createButton.type = "submit";
+    createButton.disabled = Boolean(state.createdRetailerInvite);
+    const createForm = node("form", "ops-form");
+    createForm.append(field("Retailer shop", inviteShop), createFeedback, createButton);
+
+    const generatedCode = node("div", "ops-generated-invite");
+    generatedCode.hidden = !state.createdRetailerInvite;
+    if (state.createdRetailerInvite) {
+      generatedCode.append(
+        node("p", "", `Share this one-time code with the retailer for ${shopName(state.createdRetailerInvite.shopId)}. Copy it now; if it is lost, revoke it and create a replacement.`)
+      );
+      const codeLine = node("div", "ops-generated-invite-code");
+      codeLine.append(node("code", "", state.createdRetailerInvite.code));
+      const copyButton = node("button", "button ops-retailer-secondary", "Copy code");
+      copyButton.type = "button";
+      copyButton.addEventListener("click", async () => {
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error("Clipboard access is unavailable. Select and copy the code manually.");
+          await navigator.clipboard.writeText(state.createdRetailerInvite.code);
+          setMessage("Retailer invite code copied.");
+        } catch (error) {
+          showError(error, createFeedback);
+        }
+      });
+      codeLine.append(copyButton);
+      const dismissCode = node("button", "button ops-retailer-secondary", "I saved this code");
+      dismissCode.type = "button";
+      dismissCode.addEventListener("click", async () => {
+        state.createdRetailerInvite = null;
+        await renderPage();
+      });
+      generatedCode.append(codeLine, dismissCode);
+    }
+
+    createForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      createFeedback.classList.remove("is-error");
+      createFeedback.textContent = "";
+      createButton.disabled = true;
+      try {
+        const { data, error } = await backend.client.rpc("coconibz_admin_create_retailer_invite", {
+          p_shop_id: inviteShop.value,
+        });
+        if (error) {
+          showError(error, createFeedback);
+          return;
+        }
+        if (typeof data !== "string" || !data) {
+          showError(new Error("The invite was created, but no code was returned. Check the active codes before creating another."), createFeedback);
+          return;
+        }
+        state.createdRetailerInvite = { code: data, shopId: inviteShop.value };
+        setMessage("One-time retailer code created. Copy and share it with the retailer.");
+        await renderPage();
+      } catch (error) {
+        showError(error, createFeedback);
+      } finally {
+        createButton.disabled = Boolean(state.createdRetailerInvite);
+      }
+    });
+
+    const inviteBody = node("div", "ops-retailer-invite-panel");
+    inviteBody.append(createForm, generatedCode);
+
+    const existingPhone = input("tel", "+233...");
+    existingPhone.pattern = "\\+[1-9][0-9]{7,14}";
+    existingPhone.title = "Use international format, for example +233241234567";
+    existingPhone.required = true;
+    const existingShop = select(availableShopOptions());
+    const existingFeedback = node("p", "ops-form-message");
+    const addButton = node("button", "button button-primary", "Grant retailer access");
+    addButton.type = "submit";
+    const existingForm = node("form", "ops-form");
+    existingForm.append(
+      field("Verified account phone", existingPhone),
+      field("Retailer shop", existingShop),
+      existingFeedback,
+      addButton
+    );
+    existingForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      existingFeedback.classList.remove("is-error");
+      existingFeedback.textContent = "";
+      addButton.disabled = true;
+      try {
+        const { error } = await backend.client.rpc("coconibz_admin_add_retailer", {
+          p_phone: existingPhone.value.trim(),
+          p_shop_id: existingShop.value,
+        });
+        if (error) {
+          showError(error, existingFeedback);
+          return;
+        }
+        setMessage("Retailer access granted to the existing account.");
+        await renderPage();
+      } catch (error) {
+        showError(error, existingFeedback);
+      } finally {
+        addButton.disabled = false;
+      }
+    });
+
+    const retailerRows = (retailerResult.data || []).map((retailer) => {
+      const removeButton = node("button", "button ops-retailer-remove", "Remove access");
+      removeButton.type = "button";
+      removeButton.setAttribute("aria-label", `Remove retailer access for ${retailer.full_name || retailer.phone}`);
+      removeButton.addEventListener("click", async () => {
+        const confirmed = window.confirm(
+          `Remove retailer access for ${retailer.full_name || retailer.phone}? The account will remain a customer, and the shop listing, orders, stock, and financial history will be kept.`
+        );
+        if (!confirmed) return;
+
+        removeButton.disabled = true;
+        try {
+          const { error } = await backend.client.rpc("coconibz_admin_remove_retailer", {
+            p_user_id: retailer.user_id,
+          });
+          if (error) {
+            showError(error);
+            return;
+          }
+          setMessage("Retailer access removed. Existing account and business records were preserved.");
+          await renderPage();
+        } catch (error) {
+          showError(error);
+        } finally {
+          removeButton.disabled = false;
+        }
+      });
+      return row([
+        retailer.full_name,
+        retailer.phone,
+        (retailer.shop_names || []).join(", "),
+        time(retailer.created_at),
+        removeButton,
+      ]);
+    });
+
+    const inviteRows = invites.map((invite) => {
+      const status = invite.used_at ? "Used" : invite.revoked_at ? "Revoked" : "Available";
+      const actions = node("div", "ops-payment-actions");
+      if (!invite.used_at && !invite.revoked_at) {
+        const revokeButton = node("button", "button ops-retailer-remove", "Revoke");
+        revokeButton.type = "button";
+        revokeButton.setAttribute("aria-label", `Revoke unused code for ${shopName(invite.shop_id)}`);
+        revokeButton.addEventListener("click", async () => {
+          if (!window.confirm(`Revoke this unused invite code for ${shopName(invite.shop_id)}? The retailer will need a new code.`)) return;
+          revokeButton.disabled = true;
+          try {
+            const { error } = await backend.client.rpc("coconibz_admin_revoke_retailer_invite", {
+              p_invite_id: invite.id,
+            });
+            if (error) {
+              showError(error);
+              return;
+            }
+            setMessage("Unused retailer invite code revoked.");
+            await renderPage();
+          } catch (error) {
+            showError(error);
+          } finally {
+            revokeButton.disabled = false;
+          }
+        });
+        actions.append(revokeButton);
+      }
+      return row([
+        shopName(invite.shop_id),
+        time(invite.created_at),
+        invite.used_at ? time(invite.used_at) : "—",
+        status,
+        actions,
+      ]);
+    });
+
+    content.replaceChildren(
+      card("Invite a new retailer", inviteBody, "Codes are one-time, tied to the selected shop, and stored securely. They are only displayed when first created."),
+      card("Add an existing account", existingForm, "Grant access to a verified customer account by phone. Additional shop assignments can be added separately."),
+      card("Retailer accounts", makeTable(
+        ["Name", "Phone", "Assigned shops", "Account created", "Access"],
+        retailerRows,
+        "No retailer accounts have been assigned."
+      ), "Removing access changes the account to a customer and removes shop assignments. It does not delete the account, shop, orders, stock, or finance history."),
+      card("Invite code history", makeTable(
+        ["Shop", "Created", "Used", "Status", "Actions"],
+        inviteRows,
+        "No retailer invite codes have been created."
+      ))
+    );
+  }
+
   async function renderOrders() {
     const orders = await loadRows(
       "orders",
@@ -974,7 +1184,7 @@ import "./supabase-client.js";
 
   function renderTabs() {
     const pages = state.profile.role === "admin"
-      ? ["overview", "inventory", "sales", "orders", "payments", "finance", "customers", "feedback", "audit"]
+      ? ["overview", "inventory", "sales", "orders", "payments", "finance", "retailers", "customers", "feedback", "audit"]
       : ["overview", "inventory", "sales", "orders", "feedback"];
     tabs.replaceChildren();
     pages.forEach((page) => {

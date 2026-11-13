@@ -333,6 +333,7 @@ document.querySelector("#remove-retailer-access").addEventListener("click", asyn
     staffMessage.classList.add("is-error");
     return;
   }
+  if (!window.confirm(`Remove retailer access for ${phone}? The account will remain a customer, and the shop and existing business records will be kept.`)) return;
   staffMessage.classList.remove("is-error");
   staffMessage.textContent = "Removing retailer access...";
   const { error } = await backend.client.rpc("admin_remove_retailer_access", { p_phone: phone });

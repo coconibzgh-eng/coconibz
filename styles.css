@@ -167,6 +167,13 @@
 .account-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:15px}
 .account-heading .eyebrow{margin:0 0 5px}
 .account-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.account-retailer-invite{display:grid;gap:10px;margin:0 0 20px;padding:17px;border:1px solid var(--line);border-radius:5px;background:white}
+.account-retailer-invite h3{margin:0;color:var(--brown-dark);font-family:var(--serif);font-size:20px}
+.account-retailer-invite p{margin:0;color:var(--muted);font-size:12px}
+.account-retailer-invite>label{color:var(--brown-dark);font-size:12px;font-weight:700}
+.account-retailer-invite-controls{display:flex;flex-wrap:wrap;gap:9px}
+.account-retailer-invite-controls input{min-width:220px;min-height:44px;flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:var(--cream);font:inherit;font-size:13px}
+.account-retailer-invite-controls .button{min-height:44px;padding:0 15px}
 .button-logout,.button-account-admin,.button-load-more{min-height:42px;padding:0 15px;border:1px solid var(--line);background:var(--cream);color:var(--green-dark)}
 .button-logout:hover,.button-account-admin:hover,.button-load-more:hover{background:var(--green-pale)}
 .portal-subtitle{margin-bottom:19px}
@@ -199,6 +206,7 @@
 .staff-access-form select[multiple]{height:130px}
 .staff-actions{display:grid;gap:8px}
 .staff-actions .button{min-height:42px;padding:0 13px;white-space:nowrap}
+.ops-retailer-management-link{color:var(--green-dark);font-weight:700;text-decoration:underline;text-underline-offset:3px}
 #staff-section .portal-message{margin:12px 0 0;padding:0}
 @media(max-width:900px){.admin-filters{grid-template-columns:repeat(3,minmax(120px,1fr))}}
 @media(max-width:900px){.staff-access-form{grid-template-columns:1fr 1fr}.staff-actions{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -259,6 +267,14 @@
 .ops-payment-edit,.ops-payment-cancel{border:1px solid var(--line);background:var(--paper);color:var(--green-dark)}
 .ops-payment-delete{border:1px solid #e8c9c4;background:#fff2f0;color:#9a3329}
 .ops-payment-actions .button:disabled{cursor:wait;opacity:.65}
+.ops-retailer-invite-panel{display:grid;gap:14px}
+.ops-generated-invite{display:grid;justify-items:start;gap:10px;padding:14px;border:1px solid rgba(46,125,50,.25);border-radius:5px;background:var(--green-pale)}
+.ops-generated-invite p{margin:0;color:var(--green-dark);font-size:12px}
+.ops-generated-invite-code{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.ops-generated-invite-code code{overflow-wrap:anywhere;padding:8px 11px;border:1px solid var(--line);border-radius:4px;background:white;color:var(--brown-dark);font-size:15px;font-weight:700;letter-spacing:.08em}
+.ops-retailer-secondary,.ops-retailer-remove{min-height:36px;padding:0 12px;border:1px solid var(--line);background:var(--paper);color:var(--green-dark);font-size:11px}
+.ops-retailer-remove{border-color:#e8c9c4;background:#fff2f0;color:#9a3329}
+.ops-retailer-remove:disabled,.ops-retailer-secondary:disabled{cursor:wait;opacity:.65}
 .ops-stock-summary{display:grid;justify-items:start;gap:5px}
 .ops-stock-quantity{color:var(--ink);font-size:14px}
 .ops-stock-missing{color:var(--muted)}
