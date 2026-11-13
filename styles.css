@@ -346,3 +346,4 @@
 @media(max-width:900px){.promotion-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.weather-current{grid-template-columns:1fr}.weather-current dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.weather-current dl>div{min-width:0}.weather-controls{align-items:stretch}.weather-controls>button{width:100%}.weather-controls form>div{flex-direction:column}.promotion-grid{grid-template-columns:1fr}.promotion-card{max-width:480px;width:100%;justify-self:center}.gallery-stage{min-height:220px;aspect-ratio:4/3}.gallery-controls{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.gallery-stage img{transition:none}}
+@media(max-width:650px){.gallery-stage{width:100%;min-height:0}}
