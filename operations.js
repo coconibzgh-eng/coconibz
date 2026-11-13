@@ -171,17 +171,30 @@ import "./supabase-client.js";
   }
 
   async function renderOverview() {
-    const [orders, inventory, sales] = await Promise.all([
+    const [orders, inventory, sales, stockSummaryResult, stockMovements, products] = await Promise.all([
       loadRows("orders", "id,shop_id,customer_name,customer_phone,fulfillment,delivery_area,delivery_address,status,financial_status,total,created_at", (query) =>
         query.order("created_at", { ascending: false }).limit(100)),
       loadRows("shop_inventory", "shop_id,product_key,quantity_on_hand"),
       loadRows("retailer_sales", "shop_id,total_amount,sold_at", (query) =>
         query.order("sold_at", { ascending: false }).limit(100)),
+      backend.client.rpc("coconibz_stock_supply_summary"),
+      loadRows("stock_movements", "shop_id,product_key,movement_type,quantity_change,note,created_at", (query) =>
+        query.order("created_at", { ascending: false }).limit(50)),
+      loadRows("coconibz_products", "product_key,name"),
     ]);
+    if (stockSummaryResult.error) throw stockSummaryResult.error;
     const openOrders = orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length;
     const paymentFollowUp = orders.filter((order) => order.financial_status !== "paid").length;
     const lowStock = inventory.filter((item) => item.quantity_on_hand <= 5).length;
     const retailerTotal = sales.reduce((sum, item) => sum + Number(item.total_amount), 0);
+    const stockTotals = new Map();
+    inventory.forEach((item) => {
+      stockTotals.set(item.shop_id, (stockTotals.get(item.shop_id) || 0) + Number(item.quantity_on_hand));
+    });
+    const productNames = new Map(products.map((product) => [product.product_key, product.name]));
+    const stockSummary = (stockSummaryResult.data || []).slice().sort((left, right) =>
+      shopName(left.shop_id).localeCompare(shopName(right.shop_id))
+    );
     const metrics = node("div", "ops-metrics");
     metrics.append(
       metric("Open orders", openOrders, "Among the 100 most recent orders"),
@@ -200,11 +213,48 @@ import "./supabase-client.js";
       label(order.status),
       label(order.financial_status),
     ]));
-    content.replaceChildren(intro, metrics, card("Latest orders and deliveries", makeTable(
-      ["Placed", "Customer", "Shop / delivery", "Total", "Order status", "Payment"],
-      orderRows,
-      "No orders have been recorded."
-    )));
+    const stockSupplyRows = stockSummary.map((shop) => row([
+      shopName(shop.shop_id),
+      Number(shop.units_supplied),
+      stockTotals.get(shop.shop_id) || 0,
+      time(shop.last_supplied_at),
+      time(shop.last_activity_at),
+    ]));
+    const stockMovementRows = stockMovements.map((movement) => row([
+      time(movement.created_at),
+      shopName(movement.shop_id),
+      productNames.get(movement.product_key) || movement.product_key,
+      label(movement.movement_type),
+      movement.quantity_change > 0 ? `+${movement.quantity_change}` : movement.quantity_change,
+      movement.note,
+    ]));
+    content.replaceChildren(
+      intro,
+      metrics,
+      card(
+        "Stock supplied by retailer",
+        makeTable(
+          ["Retailer / shop", "Total supplied (units)", "Current stock (units)", "Last supplied", "Last stock activity"],
+          stockSupplyRows,
+          "No retailer stock activity has been recorded."
+        ),
+        "Totals include restocks and incoming transfers. Current stock and activity dates also update when a retailer records sales or fulfills pickup orders."
+      ),
+      card(
+        "Recent stock activity",
+        makeTable(
+          ["Date", "Retailer / shop", "Product", "Activity", "Units", "Note"],
+          stockMovementRows,
+          "No stock movements have been recorded."
+        ),
+        "Latest 50 stock movements, including supplies, sales, and order fulfillment."
+      ),
+      card("Latest orders and deliveries", makeTable(
+        ["Placed", "Customer", "Shop / delivery", "Total", "Order status", "Payment"],
+        orderRows,
+        "No orders have been recorded."
+      ))
+    );
   }
 
   async function renderInventory() {
