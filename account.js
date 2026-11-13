@@ -5,6 +5,7 @@ const message = document.querySelector("#account-message");
 const ordersMessage = document.querySelector("#orders-message");
 const authPanel = document.querySelector("#auth-panel");
 const accountPanel = document.querySelector("#account-panel");
+const staffAccessNote = document.querySelector("#staff-access-note");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
 const otpForm = document.querySelector("#otp-form");
@@ -18,6 +19,8 @@ let hasMoreOrders = true;
 let currentSession = null;
 let requestedNext = new URLSearchParams(window.location.search).get("next");
 let pendingPhone = "";
+
+staffAccessNote.hidden = !["operations.html", "admin.html"].includes(requestedNext);
 
 function normalizePhone(phone) {
   return phone.replace(/[()\s-]/g, "");
