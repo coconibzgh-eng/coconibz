@@ -279,7 +279,6 @@ import "./supabase-client.js";
       });
       sections.push(card("Restock retailer stock", form, "Enter quantities for one shop and submit them together; zero quantities are skipped. Every addition is recorded as a stock movement."));
     }
-    const shopMap = new Map(state.shops.map((shop) => [shop.id, shop.name]));
     const inventoryByShop = new Map();
     inventory.forEach((item) => {
       let shopStock = inventoryByShop.get(item.shop_id);
@@ -295,8 +294,12 @@ import "./supabase-client.js";
     const stockRows = state.shops.map((shop) => {
       const shopStock = inventoryByShop.get(shop.id);
       const productCells = products.map((product) => {
+        const cell = node("td");
         const item = shopStock?.products.get(product.product_key);
-        if (!item) return node("span", "ops-stock-missing", "—");
+        if (!item) {
+          cell.append(node("span", "ops-stock-missing", "—"));
+          return cell;
+        }
         const summary = node("div", "ops-stock-summary");
         summary.append(
           node("strong", "ops-stock-quantity", item.quantity_on_hand),
@@ -304,19 +307,27 @@ import "./supabase-client.js";
             ? node("span", "ops-pill ops-low", "Low stock")
             : node("span", "ops-pill", "In stock")
         );
-        return summary;
+        cell.append(summary);
+        return cell;
       });
+      const totalStock = products.reduce((sum, product) => {
+        const item = shopStock?.products.get(product.product_key);
+        return sum + Number(item ? item.quantity_on_hand : 0);
+      }, 0);
       return row([
-        shopMap.get(shop.id) || shop.id,
+        shop.name,
         ...productCells,
+        node("strong", "ops-stock-total", totalStock),
         time(shopStock?.updatedAt),
       ]);
     });
-    sections.push(card("Stock remaining by retailer", makeTable(
-      ["Retailer / shop", ...products.map((product) => product.name), "Last updated"],
+    const stockTable = makeTable(
+      ["Retailer / shop", ...products.map((product) => product.name), "Total units", "Last updated"],
       stockRows,
       "No retailer stock records are available yet."
-    )));
+    );
+    stockTable.querySelector(".ops-table").classList.add("ops-stock-table");
+    sections.push(card("Stock remaining by retailer", stockTable));
     content.replaceChildren(...sections);
   }
 

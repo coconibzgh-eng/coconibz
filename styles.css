@@ -255,4 +255,6 @@
 .ops-stock-summary{display:grid;justify-items:start;gap:5px}
 .ops-stock-quantity{color:var(--ink);font-size:14px}
 .ops-stock-missing{color:var(--muted)}
+.ops-stock-total{color:var(--green-dark);font-size:14px}
+.ops-table.ops-stock-table{min-width:880px}
 @media(max-width:650px){.ops-restock-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
