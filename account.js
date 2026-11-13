@@ -83,7 +83,9 @@ async function showSignedInAccount(session) {
   authPanel.hidden = true;
   accountPanel.hidden = false;
   document.querySelector("#account-welcome").textContent = `Hello, ${profile.full_name || "Coconibz customer"}`;
-  document.querySelector("#admin-portal-link").hidden = !["admin", "retailer"].includes(profile.role);
+  const portalLink = document.querySelector("#admin-portal-link");
+  portalLink.hidden = !["admin", "retailer"].includes(profile.role);
+  portalLink.href = "operations.html";
   accountRetailerInviteForm.hidden = profile.role !== "customer";
   if (continueAfterAuth()) return;
   await loadOrders(true);

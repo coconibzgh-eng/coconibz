@@ -505,6 +505,10 @@ import "./supabase-client.js";
   }
 
   async function renderFinance() {
+    if (state.profile.role === "retailer") {
+      await renderRetailerFinance();
+      return;
+    }
     if (state.profile.role !== "admin") {
       content.replaceChildren(node("p", "portal-message is-error", "Finance details are restricted to admins."));
       return;
@@ -750,6 +754,53 @@ import "./supabase-client.js";
       card(
         "Payment history",
         makeTable(["Payment date", "Retailer / shop", "Amount paid", "Note / reference", "Actions"], paymentRows, "No retailer payments have been recorded.")
+      )
+    );
+  }
+
+  async function renderRetailerFinance() {
+    const shopIds = state.shops.map((shop) => shop.id);
+    const [summaryResult, payments] = await Promise.all([
+      backend.client.rpc("coconibz_retailer_own_finance_summary"),
+      loadRows("retailer_payments", "shop_id,amount,paid_at,note", (query) =>
+        query.in("shop_id", shopIds).order("paid_at", { ascending: false }).order("created_at", { ascending: false })),
+    ]);
+    if (summaryResult.error) throw summaryResult.error;
+
+    const summaryRows = (summaryResult.data || []).map((item) => row([
+      shopName(item.shop_id),
+      Number(item.opening_units),
+      money(item.opening_balance),
+      Number(item.supplied_units),
+      money(item.supply_value),
+      money(item.total_due),
+      money(item.total_paid),
+      money(item.balance_due),
+    ]));
+    const paymentRows = payments.map((payment) => {
+      const [year, month, day] = payment.paid_at.split("-").map(Number);
+      return row([
+        new Date(year, month - 1, day).toLocaleDateString(),
+        shopName(payment.shop_id),
+        money(payment.amount),
+        payment.note,
+      ]);
+    });
+
+    content.replaceChildren(
+      node("p", "portal-subtitle", "This read-only view includes only shops assigned to your retailer account."),
+      card(
+        "Your retailer balance",
+        makeTable(
+          ["Shop", "Opening stock (bottles)", "Opening balance", "New stock supplied (bottles)", "New supply value", "Total charged", "Payments received", "Balance left"],
+          summaryRows,
+          "No finance records are available for your assigned shops."
+        ),
+        "Opening balances value stock on hand at Finance setup. New restocks are added at their saved wholesale value; retailer sales do not reduce the balance."
+      ),
+      card(
+        "Recorded payments",
+        makeTable(["Payment date", "Shop", "Amount paid", "Note / reference"], paymentRows, "No retailer payments have been recorded.")
       )
     );
   }
@@ -1185,7 +1236,7 @@ import "./supabase-client.js";
   function renderTabs() {
     const pages = state.profile.role === "admin"
       ? ["overview", "inventory", "sales", "orders", "payments", "finance", "retailers", "customers", "feedback", "audit"]
-      : ["overview", "inventory", "sales", "orders", "feedback"];
+      : ["overview", "inventory", "sales", "orders", "finance", "feedback"];
     tabs.replaceChildren();
     pages.forEach((page) => {
       const button = node("button", page === state.page ? "ops-tab is-active" : "ops-tab", pageNames[page]);

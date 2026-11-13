@@ -249,6 +249,11 @@ async function initializePortal() {
   }
 
   role = profile.role;
+  if (role === "retailer") {
+    setPortalMessage("Retailer access verified. Opening the shop Operations portal...");
+    window.location.replace("operations.html");
+    return;
+  }
   const { data: shopRows, error: shopsError } = await backend.client
     .from("shops")
     .select("id, name")
@@ -302,6 +307,7 @@ async function initializePortal() {
   dashboard.hidden = false;
   salesSection.hidden = role !== "admin";
   staffSection.hidden = role !== "admin";
+  setPortalMessage("Admin portal ready.");
   await Promise.all([
     fetchOrders(true),
     role === "admin" ? loadSalesSummary() : Promise.resolve(),

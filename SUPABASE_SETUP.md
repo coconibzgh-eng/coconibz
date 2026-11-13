@@ -44,7 +44,7 @@ Do not make the order, profile, or retailer tables publicly readable. Do not dis
    where phone = '+233595441825';
    ```
 
-4. Sign out and back in. The **Shop portal** link will appear in the account page. Admins can open `operations.html` for stock, payments, retailer sales, feedback, customer summaries, and audit history.
+4. Sign out and back in. The **Shop portal** link will appear in the account page and open `operations.html`. Admins can also use the legacy order-tracking page at `admin.html`.
 
 Phone is the sign-in identifier for this site. The supplied `coconibzgh@gmail.com` address is not used by phone/password authentication.
 
@@ -70,7 +70,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 - Customer order requests are saved as **pending** before the site opens WhatsApp. If saving fails, WhatsApp is not opened and an error is shown.
 - Customers can sign in to view their own orders, filter by dates or flavor, sort them, and load older results.
 - Admins can view all shops, update order statuses, manage retailer access, and filter order requests.
-- Retailers can view and update orders only for their assigned shop(s). They do not receive the all-shop financial summary.
+- Retailers can view and update orders only for their assigned shop(s). Their read-only Finance tab shows only assigned-shop balances and payment history; payment entry, edits, and other retailers' finance records remain admin-only.
 - The financial report counts orders marked **completed** as sales; pending, cancelled, and other in-progress requests are excluded.
 - Delivery orders are recorded separately as unassigned deliveries because the site does not currently route deliveries to a specific shop.
 - Order history includes customer names and phone numbers for the customer and their authorized shop/admin. Set an appropriate data-retention policy for your business.
@@ -89,7 +89,7 @@ npx supabase db push --remote
 
 Check the migration list before pushing, and do not apply the base schema a second time to an already initialized project. Alternatively, run the additive migration's SQL once in the Supabase SQL Editor. Do not commit access tokens or paste them into chat.
 
-Open `operations.html` while signed in as an admin or assigned retailer. Access is enforced by database row-level security. Retailers see assigned-shop data; admins can manage stock and manual payment statuses, and view audit details. Product pricing remains GHS 12 in both the current site checkout and database order function; update both together before changing the price. Payment statuses are entered manually and do not confirm a Mobile Money transaction. Delivery orders have customer-entered addresses but are not automatically routed to a shop or deducted from shop inventory.
+Open `operations.html` while signed in as an admin or assigned retailer. Access is enforced by database row-level security. Retailers see assigned-shop data and their own read-only finance balances and payment history; admins can manage stock and manual payment statuses, and view audit details. Product pricing remains GHS 12 in both the current site checkout and database order function; update both together before changing the price. Payment statuses are entered manually and do not confirm a Mobile Money transaction. Delivery orders have customer-entered addresses but are not automatically routed to a shop or deducted from shop inventory.
 
 Retailer stock starts at zero until an admin records a restock. Pickup inventory is deducted when an order is marked completed; the order update is rejected if the shop lacks stock. AI performance forecasting and a public customer review form are not enabled.
 
