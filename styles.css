@@ -251,3 +251,8 @@
 .footer-links .footer-portal-button{display:inline-flex;min-height:26px;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.2);border-radius:3px;color:rgba(255,255,255,.72);font-size:9px;font-weight:700;letter-spacing:.04em}
 .footer-links .footer-portal-button:hover{border-color:rgba(255,255,255,.55);color:white}
 .footer-links .footer-portal-button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.ops-restock-grid{display:grid;grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ops-stock-summary{display:grid;justify-items:start;gap:5px}
+.ops-stock-quantity{color:var(--ink);font-size:14px}
+.ops-stock-missing{color:var(--muted)}
+@media(max-width:650px){.ops-restock-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

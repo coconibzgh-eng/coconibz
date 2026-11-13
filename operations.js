@@ -214,50 +214,108 @@ import "./supabase-client.js";
     ]);
     const sections = [];
     if (state.profile.role === "admin") {
+      const activeProducts = products.filter((item) => item.is_active);
       const shop = select(availableShopOptions());
-      const product = select(products.filter((item) => item.is_active).map((item) => [item.product_key, item.name]));
-      const quantity = input("number", "Quantity");
-      quantity.min = "1";
-      quantity.step = "1";
-      quantity.required = true;
       const note = input("text", "Batch or delivery note (optional)");
-      const form = node("form", "ops-form");
+      const quantityInputs = new Map();
+      const quantities = node("div", "ops-restock-grid");
+      activeProducts.forEach((product) => {
+        const quantity = input("number", "0");
+        quantity.min = "0";
+        quantity.step = "1";
+        quantity.value = "0";
+        quantity.setAttribute("aria-label", `Quantity to add for ${product.name}`);
+        quantityInputs.set(product.product_key, quantity);
+        quantities.append(field(product.name, quantity));
+      });
+      const form = node("form", "ops-form ops-restock-form");
       const feedback = node("p", "ops-form-message");
-      const save = node("button", "button button-primary", "Record restock");
+      const save = node("button", "button button-primary", "Restock selected flavors");
       save.type = "submit";
-      form.append(field("Retailer / shop", shop), field("Product", product), field("Quantity added", quantity), field("Note", note), feedback, save);
+      form.append(field("Retailer / shop", shop), field("Batch or delivery note (optional)", note), quantities, feedback, save);
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        save.disabled = true;
-        const { error } = await backend.client.rpc("coconibz_admin_restock", {
-          p_shop_id: shop.value,
-          p_product_key: product.value,
-          p_quantity: Number(quantity.value),
-          p_note: note.value.trim() || null,
-        });
-        save.disabled = false;
-        if (error) {
-          showError(error, feedback);
+        feedback.classList.remove("is-error");
+        feedback.textContent = "";
+        const movements = [];
+        for (const product of activeProducts) {
+          const value = quantityInputs.get(product.product_key).value.trim();
+          if (!value) continue;
+          const quantity = Number(value);
+          if (!Number.isInteger(quantity) || quantity < 0) {
+            showError(new Error(`Enter a whole number of zero or more for ${product.name}.`), feedback);
+            return;
+          }
+          if (quantity > 0) {
+            movements.push({
+              shop_id: shop.value,
+              product_key: product.product_key,
+              movement_type: "restock",
+              quantity_change: quantity,
+              note: note.value.trim() || null,
+              created_by: state.user.id,
+            });
+          }
+        }
+        if (movements.length === 0) {
+          showError(new Error("Enter a quantity for at least one flavor."), feedback);
           return;
         }
-        setMessage("Restock recorded.");
-        await renderPage();
+
+        save.disabled = true;
+        try {
+          const { error } = await backend.client.from("stock_movements").insert(movements);
+          if (error) {
+            showError(error, feedback);
+            return;
+          }
+          setMessage(`Restock recorded for ${movements.length} flavor${movements.length === 1 ? "" : "s"}.`);
+          await renderPage();
+        } catch (error) {
+          showError(error, feedback);
+        } finally {
+          save.disabled = false;
+        }
       });
-      sections.push(card("Restock retailer stock", form, "Stock is adjusted only through a recorded movement."));
+      sections.push(card("Restock retailer stock", form, "Enter quantities for one shop and submit them together; zero quantities are skipped. Every addition is recorded as a stock movement."));
     }
     const shopMap = new Map(state.shops.map((shop) => [shop.id, shop.name]));
-    const productMap = new Map(products.map((item) => [item.product_key, item.name]));
-    const stockRows = inventory.map((item) => row([
-      shopMap.get(item.shop_id) || item.shop_id,
-      productMap.get(item.product_key) || item.product_key,
-      item.quantity_on_hand,
-      item.quantity_on_hand <= 5 ? node("span", "ops-pill ops-low", "Low stock") : node("span", "ops-pill", "In stock"),
-      time(item.updated_at),
-    ]));
+    const inventoryByShop = new Map();
+    inventory.forEach((item) => {
+      let shopStock = inventoryByShop.get(item.shop_id);
+      if (!shopStock) {
+        shopStock = { products: new Map(), updatedAt: null };
+        inventoryByShop.set(item.shop_id, shopStock);
+      }
+      shopStock.products.set(item.product_key, item);
+      if (!shopStock.updatedAt || new Date(item.updated_at) > new Date(shopStock.updatedAt)) {
+        shopStock.updatedAt = item.updated_at;
+      }
+    });
+    const stockRows = state.shops.map((shop) => {
+      const shopStock = inventoryByShop.get(shop.id);
+      const productCells = products.map((product) => {
+        const item = shopStock?.products.get(product.product_key);
+        if (!item) return node("span", "ops-stock-missing", "—");
+        const summary = node("div", "ops-stock-summary");
+        summary.append(
+          node("strong", "ops-stock-quantity", item.quantity_on_hand),
+          item.quantity_on_hand <= 5
+            ? node("span", "ops-pill ops-low", "Low stock")
+            : node("span", "ops-pill", "In stock")
+        );
+        return summary;
+      });
+      return row([
+        shopMap.get(shop.id) || shop.id,
+        ...productCells,
+        time(shopStock?.updatedAt),
+      ]);
+    });
     sections.push(card("Stock remaining by retailer", makeTable(
-      ["Retailer", "Product", "Quantity", "Stock level", "Last updated"],
+      ["Retailer / shop", ...products.map((product) => product.name), "Last updated"],
       stockRows,
-      "No stock is recorded yet. An admin can add starting stock with a restock movement."
+      "No retailer stock records are available yet."
     )));
     content.replaceChildren(...sections);
   }
