@@ -246,3 +246,8 @@
 .ops-audit-details pre{max-width:480px;max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px}
 @media(max-width:900px){.ops-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.ops-dashboard{gap:10px;padding:0 12px 55px}.ops-content{gap:12px;padding:13px}.ops-tabs{margin:0 -1px}.ops-form{grid-template-columns:1fr}.ops-product-quantities{grid-template-columns:repeat(2,minmax(0,1fr))}.ops-form>.button,.ops-form-message{grid-column:auto}.ops-table th,.ops-table td{padding:9px}.ops-metric{padding:13px}}
+.footer-staff-label{margin-top:5px}
+.footer-portal-buttons{display:flex;gap:6px}
+.footer-links .footer-portal-button{display:inline-flex;min-height:26px;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.2);border-radius:3px;color:rgba(255,255,255,.72);font-size:9px;font-weight:700;letter-spacing:.04em}
+.footer-links .footer-portal-button:hover{border-color:rgba(255,255,255,.55);color:white}
+.footer-links .footer-portal-button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
