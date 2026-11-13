@@ -103,3 +103,14 @@ Retailer stock starts at zero until an admin records a restock. Retailer sales c
 - The homepage weather widget asks users to request browser location, or they can enter a city instead. Coordinates or the city search are sent to Open-Meteo to retrieve weather; the site does not store them. Weather refreshes every 15 minutes while the page is open.
 - Apply the additive migrations in `supabase/migrations/` to create the private profile-photo bucket, public marketing-image bucket, and gallery/promotion tables. Do not make profile photos publicly readable.
 
+## 9. Publish a GitHub Pages test site
+
+The intended test URL for this repository is `https://coconibzgh-eng.github.io/coconibz/`. To activate it:
+
+1. In GitHub, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**.
+2. Under **Settings → Secrets and variables → Actions**, add repository secrets named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` using the project's URL and publishable anon key from Supabase **Project Settings → API**. Never use the `service_role` key. The anon key is included in the public browser bundle, so database access must remain protected by the configured row-level security policies.
+3. In Supabase **Authentication → URL Configuration**, set the site URL to `https://coconibzgh-eng.github.io/coconibz/` and allow redirects matching `https://coconibzgh-eng.github.io/coconibz/**`.
+4. Push to `main` or run **Actions → Deploy COCONIBZ to GitHub Pages → Run workflow**. The workflow publishes the built site; share the test URL above after the deployment succeeds.
+
+The repository does not contain production credentials. Until Pages is enabled and both Actions secrets are configured, the public test site is not live and the workflow will not produce a working backend-connected deployment.
+

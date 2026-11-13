@@ -10,6 +10,7 @@ const pages = [
 ].map((page) => fileURLToPath(new URL(page, import.meta.url)));
 
 export default defineConfig({
+  base: "./",
   build: {
     rollupOptions: {
       input: pages,
