@@ -254,6 +254,11 @@
 .ops-restock-grid{display:grid;grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .ops-restock-total{grid-column:1/-1;margin:0;color:var(--green-dark);font-size:13px;font-weight:700}
 .ops-finance-preview{grid-column:1/-1;margin:0;color:var(--green-dark);font-size:13px;font-weight:700}
+.ops-payment-actions{display:flex;flex-wrap:wrap;gap:6px;white-space:nowrap}
+.ops-payment-actions .button{min-height:32px;padding:0 10px;font-size:11px}
+.ops-payment-edit,.ops-payment-cancel{border:1px solid var(--line);background:var(--paper);color:var(--green-dark)}
+.ops-payment-delete{border:1px solid #e8c9c4;background:#fff2f0;color:#9a3329}
+.ops-payment-actions .button:disabled{cursor:wait;opacity:.65}
 .ops-stock-summary{display:grid;justify-items:start;gap:5px}
 .ops-stock-quantity{color:var(--ink);font-size:14px}
 .ops-stock-missing{color:var(--muted)}

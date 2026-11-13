@@ -502,9 +502,14 @@ import "./supabase-client.js";
   }
 
   async function renderFinance() {
+    if (state.profile.role !== "admin") {
+      content.replaceChildren(node("p", "portal-message is-error", "Finance details are restricted to admins."));
+      return;
+    }
+
     const [summaryResult, payments] = await Promise.all([
       backend.client.rpc("coconibz_retailer_finance_summary"),
-      loadRows("retailer_payments", "shop_id,amount,paid_at,note,created_at", (query) =>
+      loadRows("retailer_payments", "id,shop_id,amount,paid_at,note,created_at", (query) =>
         query.order("paid_at", { ascending: false }).order("created_at", { ascending: false })),
     ]);
     if (summaryResult.error) throw summaryResult.error;
@@ -596,14 +601,135 @@ import "./supabase-client.js";
       }
     });
 
+    const editShop = select(availableShopOptions());
+    const editAmount = input("number", "0.00");
+    editAmount.min = "0.01";
+    editAmount.step = "0.01";
+    editAmount.required = true;
+    const editPaidAt = input("date");
+    editPaidAt.required = true;
+    const editNote = input("text", "Optional payment note or reference");
+    const editFeedback = node("p", "ops-form-message");
+    const updatePayment = node("button", "button button-primary", "Save changes");
+    updatePayment.type = "submit";
+    const cancelEdit = node("button", "button ops-payment-cancel", "Cancel");
+    cancelEdit.type = "button";
+    const editForm = node("form", "ops-form");
+    editForm.append(
+      field("Retailer / shop", editShop),
+      field("Amount paid (GHS)", editAmount),
+      field("Payment date", editPaidAt),
+      field("Note / reference", editNote),
+      editFeedback,
+      updatePayment,
+      cancelEdit
+    );
+    const editCard = card(
+      "Edit retailer payment",
+      editForm,
+      "Corrections are recorded in the audit log."
+    );
+    editCard.hidden = true;
+    let editingPaymentId = null;
+    function closePaymentEditor() {
+      editingPaymentId = null;
+      editForm.reset();
+      editCard.hidden = true;
+    }
+    cancelEdit.addEventListener("click", closePaymentEditor);
+    editForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      editFeedback.classList.remove("is-error");
+      editFeedback.textContent = "";
+      const amountText = editAmount.value.trim();
+      if (!editingPaymentId) {
+        showError(new Error("Choose a payment to edit."), editFeedback);
+        return;
+      }
+      if (!/^\d+(?:\.\d{1,2})?$/.test(amountText) || Number(amountText) <= 0) {
+        showError(new Error("Enter a payment amount greater than zero with no more than two decimal places."), editFeedback);
+        return;
+      }
+      if (!editPaidAt.value) {
+        showError(new Error("Choose the payment date."), editFeedback);
+        return;
+      }
+
+      updatePayment.disabled = true;
+      try {
+        const { error } = await backend.client.rpc("coconibz_update_retailer_payment", {
+          p_payment_id: editingPaymentId,
+          p_shop_id: editShop.value,
+          p_amount: amountText,
+          p_paid_at: editPaidAt.value,
+          p_note: editNote.value.trim() || null,
+        });
+        if (error) {
+          showError(error, editFeedback);
+          return;
+        }
+        setMessage("Retailer payment updated and balance recalculated.");
+        await renderPage();
+      } catch (error) {
+        showError(error, editFeedback);
+      } finally {
+        updatePayment.disabled = false;
+      }
+    });
+
     const paymentRows = payments.map((payment) => {
       const [year, month, day] = payment.paid_at.split("-").map(Number);
       const paymentDate = new Date(year, month - 1, day).toLocaleDateString();
+      const actions = node("div", "ops-payment-actions");
+      const editButton = node("button", "button ops-payment-edit", "Edit");
+      editButton.type = "button";
+      editButton.setAttribute("aria-label", `Edit payment for ${shopName(payment.shop_id)} on ${paymentDate}`);
+      editButton.addEventListener("click", () => {
+        editingPaymentId = payment.id;
+        editShop.value = payment.shop_id;
+        editAmount.value = String(payment.amount);
+        editPaidAt.value = payment.paid_at;
+        editNote.value = payment.note || "";
+        editFeedback.textContent = "";
+        editFeedback.classList.remove("is-error");
+        editCard.hidden = false;
+        editCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        editAmount.focus();
+      });
+
+      const deleteButton = node("button", "button ops-payment-delete", "Delete");
+      deleteButton.type = "button";
+      deleteButton.setAttribute("aria-label", `Delete payment for ${shopName(payment.shop_id)} on ${paymentDate}`);
+      deleteButton.addEventListener("click", async () => {
+        const confirmed = window.confirm(
+          `Delete the ${money(payment.amount)} payment for ${shopName(payment.shop_id)} dated ${paymentDate}? It will no longer count toward the balance, but the audit log will retain the original record.`
+        );
+        if (!confirmed) return;
+
+        deleteButton.disabled = true;
+        try {
+          const { error } = await backend.client.rpc("coconibz_delete_retailer_payment", {
+            p_payment_id: payment.id,
+          });
+          if (error) {
+            showError(error);
+            return;
+          }
+          setMessage("Retailer payment deleted and balance recalculated.");
+          await renderPage();
+        } catch (error) {
+          showError(error);
+        } finally {
+          deleteButton.disabled = false;
+        }
+      });
+      actions.append(editButton, deleteButton);
       return row([
         paymentDate,
         shopName(payment.shop_id),
         money(payment.amount),
         payment.note,
+        actions,
       ]);
     });
     content.replaceChildren(
@@ -617,9 +743,10 @@ import "./supabase-client.js";
         "Opening balances value stock on hand at Finance setup using current retailer rates and assume it is unpaid. New restocks are added at their saved wholesale value; retailer sales do not reduce the balance."
       ),
       card("Record retailer payment", form, "Enter the amount, date, and optional reference. The balance preview updates before saving."),
+      editCard,
       card(
         "Payment history",
-        makeTable(["Payment date", "Retailer / shop", "Amount paid", "Note / reference"], paymentRows, "No retailer payments have been recorded.")
+        makeTable(["Payment date", "Retailer / shop", "Amount paid", "Note / reference", "Actions"], paymentRows, "No retailer payments have been recorded.")
       )
     );
   }
