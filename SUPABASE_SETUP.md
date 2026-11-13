@@ -52,6 +52,8 @@ Phone is the sign-in identifier for this site. The supplied `coconibzgh@gmail.co
 
 For a new retailer, sign in as an admin and open `operations.html` -> **Retailers**. To add a location, use **Create a shop** and enter its name and address; WhatsApp, map link, and hours are optional, and the wholesale price defaults to GHS 12 per bottle. The new shop is added to the public pickup list and initialized for stock and finance tracking. Then choose it and create a one-time invite code. Share the code with the retailer. They can enter the code while signing up at `account.html`, verify their phone by SMS, and receive access to that shop. Existing customers can redeem a code from their signed-in account page.
 
+Admins can rename a shop in the **Edit shop name** section of the **Retailers** tab. The shop ID stays unchanged, so retailer assignments and historical records remain attached; the updated display name appears in the homepage, pickup list, and operations views.
+
 Admins can also grant access to an existing verified account by phone in the **Retailers** tab. To remove retailer access, use **Remove access** there; the account becomes a customer, while the shop listing, account, orders, stock, and financial history are retained. Unused invite codes can be revoked and replaced. Codes are shown only once.
 
 The current shop assignments are:

@@ -14,6 +14,7 @@ import "./supabase-client.js";
     channel: null,
     createdRetailerInvite: null,
     preferredInviteShopId: null,
+    preferredShopNameEditId: null,
   };
   const pageNames = {
     overview: "Overview",
@@ -156,6 +157,30 @@ import "./supabase-client.js";
 
   function shopName(shopId) {
     return state.shops.find((shop) => shop.id === shopId)?.name || "Unassigned delivery";
+  }
+
+  async function refreshShopNames() {
+    const { data: shopRows, error } = await backend.client.from("shops").select("id,name").order("name");
+    if (error) {
+      showError(error);
+      return;
+    }
+    if (!Array.isArray(shopRows)) {
+      showError(new Error("The updated shop list was not returned."));
+      return;
+    }
+    if (state.profile.role === "admin") {
+      state.shops = shopRows;
+    } else {
+      const assignedShopIds = new Set(state.shops.map((shop) => shop.id));
+      state.shops = shopRows.filter((shop) => assignedShopIds.has(shop.id));
+    }
+    const shopText = state.profile.role === "admin"
+      ? "Admin access · all shops"
+      : `Retailer access · ${state.shops.map((shop) => shop.name).join(", ")}`;
+    document.querySelector("#ops-role-note").textContent =
+      `Welcome, ${state.profile.full_name || state.profile.role}. ${shopText}.`;
+    await renderPage();
   }
 
   async function renderPage() {
@@ -904,12 +929,65 @@ import "./supabase-client.js";
         state.shops = [...state.shops, { id: shopId, name: createdShopName }]
           .sort((left, right) => left.name.localeCompare(right.name));
         state.preferredInviteShopId = shopId;
+        state.preferredShopNameEditId = shopId;
         setMessage(`Shop "${createdShopName}" created. It is ready for retailer assignments and public pickup.`);
         await renderPage();
       } catch (error) {
         showError(error, shopCreateFeedback);
       } finally {
         shopCreateButton.disabled = false;
+      }
+    });
+
+    const editShopSelect = select(availableShopOptions());
+    if (state.preferredShopNameEditId) editShopSelect.value = state.preferredShopNameEditId;
+    const editShopNameInput = input("text", "Updated shop name");
+    editShopNameInput.required = true;
+    editShopNameInput.maxLength = 120;
+    const shopNameForSelection = () => state.shops.find((shop) => shop.id === editShopSelect.value);
+    editShopNameInput.value = shopNameForSelection()?.name || "";
+    editShopSelect.addEventListener("change", () => {
+      editShopNameInput.value = shopNameForSelection()?.name || "";
+    });
+    const editShopFeedback = node("p", "ops-form-message");
+    const editShopButton = node("button", "button button-primary", "Save shop name");
+    editShopButton.type = "submit";
+    const editShopForm = node("form", "ops-form");
+    editShopForm.append(
+      field("Shop", editShopSelect),
+      field("Shop name", editShopNameInput),
+      editShopFeedback,
+      editShopButton
+    );
+    editShopForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      editShopFeedback.classList.remove("is-error");
+      editShopFeedback.textContent = "";
+      editShopButton.disabled = true;
+      const currentShop = shopNameForSelection();
+      try {
+        const { data: updatedName, error } = await backend.client.rpc("coconibz_admin_update_shop_name", {
+          p_shop_id: editShopSelect.value,
+          p_name: editShopNameInput.value.trim(),
+        });
+        if (error) {
+          showError(error, editShopFeedback);
+          return;
+        }
+        if (typeof updatedName !== "string" || !updatedName) {
+          showError(new Error("The shop name was not returned. Reload the page before trying again."), editShopFeedback);
+          return;
+        }
+        state.shops = state.shops.map((shop) =>
+          shop.id === editShopSelect.value ? { ...shop, name: updatedName } : shop
+        ).sort((left, right) => left.name.localeCompare(right.name));
+        state.preferredShopNameEditId = editShopSelect.value;
+        setMessage(`Shop name updated from "${currentShop?.name || "shop"}" to "${updatedName}". Existing assignments and records are unchanged.`);
+        await renderPage();
+      } catch (error) {
+        showError(error, editShopFeedback);
+      } finally {
+        editShopButton.disabled = false;
       }
     });
 
@@ -1101,6 +1179,7 @@ import "./supabase-client.js";
     });
 
     content.replaceChildren(
+      card("Edit shop name", editShopForm, "The shop ID stays unchanged, so retailer assignments, inventory, orders, and finance history remain linked. The updated name is used across the site."),
       card("Create a shop", shopCreateForm, "New shops are added to the pickup list with inventory, finance tracking, and the selected wholesale rate. Create a retailer invite code below to assign the shop."),
       card("Invite a new retailer", inviteBody, "Codes are one-time, tied to the selected shop, and stored securely. They are only displayed when first created."),
       card("Add an existing account", existingForm, "Grant access to a verified customer account by phone. Additional shop assignments can be added separately."),
@@ -1422,6 +1501,7 @@ import "./supabase-client.js";
       .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => renderPage())
       .on("postgres_changes", { event: "*", schema: "public", table: "retailer_payments" }, () => renderPage())
       .on("postgres_changes", { event: "*", schema: "public", table: "customer_feedback" }, () => renderPage())
+      .on("postgres_changes", { event: "*", schema: "public", table: "shops" }, () => refreshShopNames())
       .subscribe((status) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           setMessage("Live updates are disconnected. Refresh to reconnect.", true);

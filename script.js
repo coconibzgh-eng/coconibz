@@ -355,19 +355,20 @@ function addPublicShopCard(shop, index) {
 }
 
 async function initializePublicPickupOptions() {
-  const existingShopIds = new Set(
-    [...locationGrid.querySelectorAll(".location-card")].map((card) => card.dataset.shopId)
-  );
   if (backend?.configured) {
     const { data, error } = await backend.client
       .from("shops")
       .select("id,name,whatsapp_number,address,map_url,opening_hours")
       .order("name");
     if (error) {
-      shopLoadStatus.textContent = `Could not load additional pickup shops. ${error.message}`;
+      shopLoadStatus.textContent = `Could not load the current pickup list; showing saved location details. ${error.message}`;
+    } else if (!Array.isArray(data) || data.length === 0) {
+      shopLoadStatus.textContent = "No shops were returned by the database; showing saved location details.";
     } else {
-      (data || []).filter((shop) => !existingShopIds.has(shop.id)).forEach((shop) => {
-        addPublicShopCard(shop, locationGrid.children.length + 1);
+      locationGrid.replaceChildren();
+      [...shopSelect.options].slice(1).forEach((option) => option.remove());
+      data.forEach((shop, index) => {
+        addPublicShopCard(shop, index + 1);
       });
     }
   }
