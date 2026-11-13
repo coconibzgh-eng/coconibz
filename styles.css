@@ -161,6 +161,12 @@
 .auth-form label,.order-filters label{display:grid;gap:5px;color:var(--brown-dark);font-size:12px;font-weight:700}
 .auth-form input,.order-filters input,.order-filters select{width:100%;min-width:0;min-height:44px;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:white;color:var(--ink);font:inherit;font-size:13px}
 .auth-form input:focus-visible,.order-filters input:focus-visible,.order-filters select:focus-visible,.order-status-select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.remember-login-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.auth-form .remember-login-row>label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.auth-form .remember-login-row input[type=checkbox]{width:18px;min-height:18px;padding:0;border:0;background:transparent;accent-color:var(--green)}
+.remembered-phones-clear{padding:5px;border:0;background:transparent;color:var(--green-dark);cursor:pointer;font:inherit;font-size:11px;text-decoration:underline;text-underline-offset:2px}
+.remembered-phones-clear:disabled{cursor:not-allowed;opacity:.5}
+.auth-form>p.remember-login-note{margin:0;color:var(--muted);font-size:11px}
 .auth-form .button{margin-top:8px}
 .auth-form [hidden],.account-panel[hidden],.admin-dashboard[hidden],.sales-section[hidden]{display:none}
 .account-panel{max-width:1240px;margin:0 auto 76px;padding:clamp(18px,3vw,32px)}

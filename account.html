@@ -54,9 +54,15 @@
         <h2>Welcome back</h2>
         <p>Sign in with your phone number and password. This browser remembers your signed-in session; log out on shared devices.</p>
         <label for="login-phone">Phone number</label>
-        <input id="login-phone" name="phone" type="tel" autocomplete="username" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}">
+        <input id="login-phone" name="phone" type="tel" autocomplete="username" inputmode="tel" list="remembered-phones" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}">
+        <datalist id="remembered-phones"></datalist>
         <label for="login-password">Password</label>
         <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <div class="remember-login-row">
+          <label for="remember-login"><input id="remember-login" name="remember_me" type="checkbox"> Remember me on this device</label>
+          <button class="remembered-phones-clear" id="clear-remembered-phones" type="button">Clear saved numbers</button>
+        </div>
+        <p class="remember-login-note">When checked, a successful sign-in saves this phone number in this browser for next time. Passwords are never saved by COCONIBZ.</p>
         <button class="button button-primary" type="submit">Sign in</button>
       </form>
 

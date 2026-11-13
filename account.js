@@ -8,6 +8,9 @@ const accountPanel = document.querySelector("#account-panel");
 const staffAccessNote = document.querySelector("#staff-access-note");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
+const rememberedPhoneList = document.querySelector("#remembered-phones");
+const rememberLoginCheckbox = document.querySelector("#remember-login");
+const clearRememberedPhonesButton = document.querySelector("#clear-remembered-phones");
 const otpForm = document.querySelector("#otp-form");
 const accountRetailerInviteForm = document.querySelector("#account-retailer-invite-form");
 const resendOtpButton = document.querySelector("#resend-otp-button");
@@ -20,6 +23,7 @@ const profilePhotoMessage = document.querySelector("#profile-photo-message");
 const passwordChangeForm = document.querySelector("#password-change-form");
 const passwordChangeMessage = document.querySelector("#password-change-message");
 const pageSize = 100;
+const rememberedPhonesKey = "coconibz-remembered-phone-numbers";
 let orderOffset = 0;
 let allOrders = [];
 let hasMoreOrders = true;
@@ -33,6 +37,50 @@ staffAccessNote.hidden = !["operations.html", "admin.html"].includes(requestedNe
 
 function normalizePhone(phone) {
   return phone.replace(/[()\s-]/g, "");
+}
+
+function getRememberedPhones() {
+  const savedPhones = window.localStorage.getItem(rememberedPhonesKey);
+  if (savedPhones === null) return [];
+  let parsedPhones;
+  try {
+    parsedPhones = JSON.parse(savedPhones);
+  } catch {
+    throw new Error("The remembered phone list is unreadable. Clear saved numbers and try again.");
+  }
+  if (!Array.isArray(parsedPhones)) {
+    throw new Error("The remembered phone list is invalid. Clear saved numbers and try again.");
+  }
+  const phones = parsedPhones.map((phone) => {
+    if (typeof phone !== "string") throw new Error("The remembered phone list is invalid. Clear saved numbers and try again.");
+    const normalized = normalizePhone(phone);
+    if (!/^\+[1-9][0-9]{7,14}$/.test(normalized)) {
+      throw new Error("The remembered phone list contains an invalid entry. Clear saved numbers and try again.");
+    }
+    return normalized;
+  });
+  return [...new Set(phones)];
+}
+
+function renderRememberedPhones() {
+  const phones = getRememberedPhones();
+  rememberedPhoneList.replaceChildren();
+  phones.forEach((phone) => {
+    const option = document.createElement("option");
+    option.value = phone;
+    rememberedPhoneList.append(option);
+  });
+  clearRememberedPhonesButton.disabled = phones.length === 0;
+}
+
+function rememberPhone(phone) {
+  const normalized = normalizePhone(phone);
+  if (!/^\+[1-9][0-9]{7,14}$/.test(normalized)) {
+    throw new Error("Enter a phone number in international format before saving it.");
+  }
+  const phones = getRememberedPhones().filter((savedPhone) => savedPhone !== normalized);
+  window.localStorage.setItem(rememberedPhonesKey, JSON.stringify([normalized, ...phones]));
+  renderRememberedPhones();
 }
 
 function formatGhs(amount) {
@@ -333,17 +381,41 @@ loginForm.addEventListener("submit", async (event) => {
   setBusy(loginForm, true);
   showMessage("Signing you in...");
   const formData = new FormData(loginForm);
+  const phone = normalizePhone(String(formData.get("phone")));
 
   try {
     const { data, error } = await backend.client.auth.signInWithPassword({
-      phone: normalizePhone(String(formData.get("phone"))),
+      phone,
       password: String(formData.get("password")),
     });
     if (error) throw error;
+    let rememberError = null;
+    if (rememberLoginCheckbox.checked) {
+      try {
+        rememberPhone(phone);
+      } catch (error) {
+        rememberError = error;
+        requestedNext = null;
+      }
+    }
     await showSignedInAccount(data.session);
+    if (rememberError) {
+      showMessage(`Signed in, but this browser could not save the phone number: ${rememberError.message}`, true);
+    }
   } catch (error) {
     showMessage(`Could not sign in: ${error.message}`, true);
     setBusy(loginForm, false);
+  }
+});
+
+clearRememberedPhonesButton.addEventListener("click", () => {
+  if (!window.confirm("Clear all remembered phone numbers from this browser?")) return;
+  try {
+    window.localStorage.removeItem(rememberedPhonesKey);
+    renderRememberedPhones();
+    showMessage("Remembered phone numbers cleared from this browser.");
+  } catch (error) {
+    showMessage(`Could not clear remembered phone numbers: ${error.message}`, true);
   }
 });
 
@@ -494,6 +566,11 @@ if (!backend?.configured) {
   signupForm.querySelectorAll("input, button").forEach((element) => { element.disabled = true; });
   loginForm.querySelectorAll("input, button").forEach((element) => { element.disabled = true; });
 } else {
+  try {
+    renderRememberedPhones();
+  } catch (error) {
+    showMessage(error.message, true);
+  }
   backend.client.auth.getSession().then(({ data, error }) => {
     if (error) throw error;
     return showSignedInAccount(data.session);
