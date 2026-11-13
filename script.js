@@ -380,6 +380,288 @@ async function initializePublicPickupOptions() {
   updateCombinedOrder();
 }
 
+function initializeHomepageMarketing() {
+  const promotionGrid = document.querySelector("#promotion-grid");
+  const promotionStatus = document.querySelector("#promotion-status");
+  const galleryImage = document.querySelector("#gallery-image");
+  const galleryCaption = document.querySelector("#gallery-caption");
+  const galleryStatus = document.querySelector("#gallery-status");
+  const galleryPauseButton = document.querySelector("#gallery-pause");
+  const galleryNextButton = document.querySelector("#gallery-next");
+  let galleryItems = [];
+  let galleryIndex = -1;
+  let galleryPaused = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let galleryTimer = null;
+
+  function marketingImageUrl(path) {
+    return backend.client.storage.from("site-marketing").getPublicUrl(path).data.publicUrl;
+  }
+
+  function safePromotionHref(target) {
+    if (!target) return null;
+    if (target.startsWith("#")) return target;
+    if (target.startsWith("/") && !target.startsWith("//")) return target;
+    try {
+      const url = new URL(target);
+      return url.protocol === "https:" ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function renderPromotions(items) {
+    promotionGrid.replaceChildren();
+    if (!items.length) {
+      promotionStatus.hidden = false;
+      promotionStatus.textContent = "No promotions are running right now. Check back soon.";
+      promotionGrid.append(promotionStatus);
+      return;
+    }
+
+    promotionStatus.hidden = true;
+    items.forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "promotion-card";
+      const copy = document.createElement("div");
+      copy.className = "promotion-copy";
+      const title = document.createElement("h3");
+      title.textContent = item.title;
+      const description = document.createElement("p");
+      description.textContent = item.description || "";
+      copy.append(title, description);
+      const image = document.createElement("img");
+      image.src = marketingImageUrl(item.object_path);
+      image.alt = item.title;
+      image.loading = "lazy";
+      const href = safePromotionHref(item.target_url);
+      if (href) {
+        const link = document.createElement("a");
+        link.href = href;
+        if (/^https:\/\//i.test(href) && new URL(href).origin !== window.location.origin) {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
+        const callToAction = document.createElement("span");
+        callToAction.className = "promotion-link";
+        callToAction.textContent = "Learn more";
+        copy.append(callToAction);
+        link.append(image, copy);
+        card.append(link);
+      } else {
+        card.append(image, copy);
+      }
+      promotionGrid.append(card);
+    });
+  }
+
+  function showGalleryImage(index) {
+    const item = galleryItems[index];
+    if (!item) return;
+    galleryIndex = index;
+    galleryImage.src = marketingImageUrl(item.object_path);
+    galleryImage.alt = item.alt_text;
+    galleryImage.hidden = false;
+    galleryCaption.textContent = item.title || "";
+    galleryCaption.hidden = !item.title;
+    galleryStatus.hidden = true;
+  }
+
+  function showRandomGalleryImage() {
+    if (!galleryItems.length) return;
+    if (galleryItems.length === 1) {
+      showGalleryImage(0);
+      return;
+    }
+    let nextIndex = Math.floor(Math.random() * galleryItems.length);
+    if (nextIndex === galleryIndex) nextIndex = (nextIndex + 1) % galleryItems.length;
+    showGalleryImage(nextIndex);
+  }
+
+  function setGalleryRotation(paused) {
+    galleryPaused = paused;
+    if (galleryTimer) window.clearInterval(galleryTimer);
+    galleryTimer = null;
+    galleryPauseButton.textContent = galleryPaused ? "Resume rotation" : "Pause rotation";
+    if (!galleryPaused && galleryItems.length > 1) {
+      galleryTimer = window.setInterval(showRandomGalleryImage, 20000);
+    }
+  }
+
+  galleryPauseButton.addEventListener("click", () => setGalleryRotation(!galleryPaused));
+  galleryNextButton.addEventListener("click", showRandomGalleryImage);
+
+  async function loadPromotions() {
+    if (!backend?.configured) {
+      promotionStatus.textContent = "Promotions are temporarily unavailable.";
+      return;
+    }
+    const { data, error } = await backend.client
+      .from("coconibz_promotions")
+      .select("title,description,object_path,target_url")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (error) {
+      promotionStatus.textContent = `Could not load promotions: ${error.message}`;
+      return;
+    }
+    renderPromotions(Array.isArray(data) ? data : []);
+  }
+
+  async function loadGallery() {
+    if (!backend?.configured) {
+      galleryStatus.textContent = "The gallery is temporarily unavailable.";
+      return;
+    }
+    const { data, error } = await backend.client
+      .from("coconibz_gallery_images")
+      .select("title,alt_text,object_path")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (error) {
+      galleryStatus.textContent = `Could not load gallery images: ${error.message}`;
+      return;
+    }
+    galleryItems = Array.isArray(data) ? data : [];
+    if (!galleryItems.length) return;
+    galleryPauseButton.disabled = galleryItems.length < 2;
+    galleryNextButton.disabled = galleryItems.length < 2;
+    showRandomGalleryImage();
+    setGalleryRotation(galleryPaused);
+  }
+
+  loadPromotions().catch((error) => {
+    promotionStatus.textContent = `Could not load promotions: ${error.message}`;
+  });
+  loadGallery().catch((error) => {
+    galleryStatus.textContent = `Could not load gallery images: ${error.message}`;
+  });
+}
+
+function initializeWeather() {
+  const status = document.querySelector("#weather-status");
+  const currentPanel = document.querySelector("#weather-current");
+  const locationLabel = document.querySelector("#weather-location");
+  const temperature = document.querySelector("#weather-temperature");
+  const description = document.querySelector("#weather-description");
+  const feelsLike = document.querySelector("#weather-feels-like");
+  const humidity = document.querySelector("#weather-humidity");
+  const wind = document.querySelector("#weather-wind");
+  const updated = document.querySelector("#weather-updated");
+  const locateButton = document.querySelector("#weather-use-location");
+  const cityForm = document.querySelector("#weather-city-form");
+  const cityInput = document.querySelector("#weather-city");
+  let selectedLocation = null;
+  let refreshTimer = null;
+
+  const conditions = new Map([
+    [0, "Clear sky"], [1, "Mainly clear"], [2, "Partly cloudy"], [3, "Overcast"],
+    [45, "Fog"], [48, "Rime fog"], [51, "Light drizzle"], [53, "Drizzle"],
+    [55, "Heavy drizzle"], [56, "Freezing drizzle"], [57, "Heavy freezing drizzle"],
+    [61, "Light rain"], [63, "Rain"], [65, "Heavy rain"], [66, "Freezing rain"],
+    [67, "Heavy freezing rain"], [71, "Light snow"], [73, "Snow"], [75, "Heavy snow"],
+    [77, "Snow grains"], [80, "Light showers"], [81, "Rain showers"], [82, "Heavy showers"],
+    [85, "Snow showers"], [86, "Heavy snow showers"], [95, "Thunderstorm"],
+    [96, "Thunderstorm with hail"], [99, "Heavy thunderstorm with hail"],
+  ]);
+
+  function setStatus(text, isError = false) {
+    status.textContent = text;
+    status.classList.toggle("is-error", isError);
+    status.hidden = !text;
+  }
+
+  async function fetchWeather(location) {
+    setStatus("Getting the latest weather...");
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.searchParams.set("latitude", String(location.latitude));
+    url.searchParams.set("longitude", String(location.longitude));
+    url.searchParams.set("current", "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m");
+    url.searchParams.set("timezone", "auto");
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Weather service returned ${response.status}.`);
+    const result = await response.json();
+    if (!result.current) throw new Error("The weather service returned no current conditions.");
+    locationLabel.textContent = location.name;
+    temperature.textContent = `${Math.round(result.current.temperature_2m)}°C`;
+    description.textContent = conditions.get(result.current.weather_code) || "Current conditions";
+    feelsLike.textContent = `${Math.round(result.current.apparent_temperature)}°C`;
+    humidity.textContent = `${Math.round(result.current.relative_humidity_2m)}%`;
+    wind.textContent = `${Math.round(result.current.wind_speed_10m)} km/h`;
+    const updateTime = result.current.time?.split("T")[1] || "";
+    updated.textContent = `Updated ${updateTime}${result.timezone ? ` · ${result.timezone}` : ""}.`;
+    currentPanel.hidden = false;
+    setStatus("");
+    selectedLocation = location;
+    if (refreshTimer) window.clearInterval(refreshTimer);
+    refreshTimer = window.setInterval(() => {
+      if (selectedLocation) fetchWeather(selectedLocation).catch((error) => setStatus(`Could not refresh weather: ${error.message}`, true));
+    }, 15 * 60 * 1000);
+  }
+
+  locateButton.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      setStatus("Location access is not available in this browser. Enter a city instead.", true);
+      cityInput.focus();
+      return;
+    }
+    locateButton.disabled = true;
+    setStatus("Requesting permission to use your location...");
+    navigator.geolocation.getCurrentPosition((position) => {
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        name: "Your location",
+      };
+      fetchWeather(location).catch((error) => setStatus(`Could not load weather: ${error.message}`, true))
+        .finally(() => { locateButton.disabled = false; });
+    }, (error) => {
+      const message = error.code === error.PERMISSION_DENIED
+        ? "Location permission was denied. Enter a city to see its weather."
+        : "Could not read your location. Enter a city to see its weather.";
+      setStatus(message, true);
+      cityInput.focus();
+      locateButton.disabled = false;
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
+  });
+
+  cityForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = cityForm.querySelector("button");
+    submitButton.disabled = true;
+    setStatus("Looking up the city...");
+    try {
+      const lookupUrl = new URL("https://geocoding-api.open-meteo.com/v1/search");
+      lookupUrl.searchParams.set("name", cityInput.value.trim());
+      lookupUrl.searchParams.set("count", "1");
+      lookupUrl.searchParams.set("language", "en");
+      lookupUrl.searchParams.set("format", "json");
+      const lookupResponse = await fetch(lookupUrl);
+      if (!lookupResponse.ok) throw new Error(`City lookup returned ${lookupResponse.status}.`);
+      const lookup = await lookupResponse.json();
+      const place = lookup.results?.[0];
+      if (!place) throw new Error("No matching city was found. Check the spelling and try again.");
+      const location = {
+        latitude: place.latitude,
+        longitude: place.longitude,
+        name: [place.name, place.country].filter(Boolean).join(", "),
+      };
+      await fetchWeather(location);
+    } catch (error) {
+      setStatus(`Could not load weather: ${error.message}`, true);
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+
+  if (navigator.permissions?.query) {
+    navigator.permissions.query({ name: "geolocation" }).then((permission) => {
+      if (permission.state === "granted") locateButton.click();
+    }).catch((error) => {
+      setStatus(`Could not check saved location permission: ${error.message}. You can still choose a location manually.`);
+    });
+  }
+}
+
 document.querySelectorAll(".location-card").forEach(registerLocationCard);
 
 initializePublicPickupOptions().catch((error) => {
@@ -389,6 +671,8 @@ initializePublicPickupOptions().catch((error) => {
   updateFulfillmentFields();
   updateCombinedOrder();
 });
+initializeHomepageMarketing();
+initializeWeather();
 
 if (backend?.configured) {
   backend.client.auth.getSession().then(({ data, error }) => {

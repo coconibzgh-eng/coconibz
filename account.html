@@ -52,7 +52,7 @@
 
       <form class="portal-card auth-form" id="login-form">
         <h2>Welcome back</h2>
-        <p>Sign in with the phone number and password you used to create your account.</p>
+        <p>Sign in with your phone number and password. This browser remembers your signed-in session; log out on shared devices.</p>
         <label for="login-phone">Phone number</label>
         <input id="login-phone" name="phone" type="tel" autocomplete="username" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}">
         <label for="login-password">Password</label>
@@ -75,6 +75,32 @@
         <div><p class="eyebrow"><span class="eyebrow-line"></span> ORDER HISTORY</p><h2 id="account-welcome">Your orders</h2></div>
         <div class="account-actions"><a class="button button-account-admin" id="admin-portal-link" href="operations.html" hidden>Shop portal</a><button class="button button-logout" id="logout-button" type="button">Log out</button></div>
       </div>
+      <section class="account-settings" id="account-settings" aria-labelledby="account-settings-title">
+        <div class="account-settings-heading"><h3 id="account-settings-title">Account &amp; security</h3><p>Your sign-in stays active on this browser. Never save your password on a shared device.</p></div>
+        <div class="account-settings-grid">
+          <form class="account-security-form" id="profile-photo-form">
+            <h4>Profile photo</h4>
+            <p>Only you and COCONIBZ administrators can view your photo.</p>
+            <img class="account-avatar" id="account-avatar" alt="Your profile photo" hidden>
+            <label for="profile-photo">Choose a photo (JPG, PNG, or WebP; up to 5 MB)</label>
+            <input id="profile-photo" name="profile_photo" type="file" accept="image/jpeg,image/png,image/webp" required>
+            <p class="portal-message" id="profile-photo-message" role="status" aria-live="polite"></p>
+            <button class="button button-primary" type="submit">Upload profile photo</button>
+          </form>
+          <form class="account-security-form" id="password-change-form">
+            <h4>Change password</h4>
+            <p>For security, enter your current password. Changing it signs you out on your devices.</p>
+            <label for="current-password">Current password</label>
+            <input id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+            <label for="new-password">New password</label>
+            <input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required>
+            <label for="confirm-password">Confirm new password</label>
+            <input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
+            <p class="portal-message" id="password-change-message" role="status" aria-live="polite"></p>
+            <button class="button button-primary" type="submit">Update password</button>
+          </form>
+        </div>
+      </section>
       <form class="account-retailer-invite" id="account-retailer-invite-form" hidden>
         <h3>Activate retailer access</h3>
         <p>Have a one-time code from a COCONIBZ admin? Enter it here to open your retailer portal.</p>

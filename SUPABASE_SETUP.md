@@ -95,3 +95,11 @@ Open `operations.html` while signed in as an admin or assigned retailer. Access 
 
 Retailer stock starts at zero until an admin records a restock. Retailer sales cannot exceed available inventory; the sale form shows current quantities, and the database reports the available and requested amounts if stock changes before a sale is saved. Pickup inventory is deducted when an order is marked completed; the order update is rejected if the shop lacks stock. AI performance forecasting and a public customer review form are not enabled.
 
+## 8. Account security, photos, and homepage content
+
+- Sign-in sessions are persisted in the browser so returning users do not need to sign in on every visit. The site stores Supabase session tokens, not plaintext passwords. Browser password managers may offer to save the phone number and password; on shared devices, sign out when finished.
+- All signed-in roles can open **Account & security** from their account or operations navigation to upload a profile photo or change a password. Changing a password requires the current password and signs out all devices. Profile photos are stored in a private bucket and can be viewed only by the account owner and admins.
+- Admins can manage the homepage gallery and product promotions from **Operations → Marketing**. Gallery photos rotate every 20 seconds; pause/resume and manual next controls are available. Confirm permission before publishing recognizable client photos. Promotions appear on the COCONIBZ homepage and do not purchase ads on external platforms.
+- The homepage weather widget asks users to request browser location, or they can enter a city instead. Coordinates or the city search are sent to Open-Meteo to retrieve weather; the site does not store them. Weather refreshes every 15 minutes while the page is open.
+- Apply the additive migrations in `supabase/migrations/` to create the private profile-photo bucket, public marketing-image bucket, and gallery/promotion tables. Do not make profile photos publicly readable.
+

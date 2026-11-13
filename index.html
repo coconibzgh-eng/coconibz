@@ -107,6 +107,58 @@
       </div>
     </section>
 
+    <section class="weather-section section-pad" id="weather" aria-labelledby="weather-title">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="eyebrow-line"></span> WEATHER WHERE YOU ARE</p>
+        <h2 id="weather-title">A little sunshine <em>near you.</em></h2>
+        <p>Allow your browser to use your location or enter a city. Your location is sent only to fetch weather and is not saved.</p>
+      </div>
+      <div class="weather-panel">
+        <p class="weather-status" id="weather-status" role="status" aria-live="polite">Choose a location to see current weather.</p>
+        <div class="weather-current" id="weather-current" hidden>
+          <div><span class="weather-location" id="weather-location"></span><strong id="weather-temperature"></strong><span id="weather-description"></span></div>
+          <dl><div><dt>Feels like</dt><dd id="weather-feels-like"></dd></div><div><dt>Humidity</dt><dd id="weather-humidity"></dd></div><div><dt>Wind</dt><dd id="weather-wind"></dd></div></dl>
+          <p id="weather-updated"></p>
+        </div>
+        <div class="weather-controls">
+          <button class="button button-primary" id="weather-use-location" type="button">Use my location</button>
+          <form id="weather-city-form">
+            <label for="weather-city">Or enter a city</label>
+            <div><input id="weather-city" name="city" autocomplete="address-level2" placeholder="e.g. Tamale" required><button class="button button-account-admin" type="submit">Get weather</button></div>
+          </form>
+        </div>
+        <p class="weather-attribution">Weather by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>. Updates every 15 minutes while this page is open.</p>
+      </div>
+    </section>
+
+    <section class="promotions-section section-pad" id="promotions" aria-labelledby="promotions-title">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="eyebrow-line"></span> FRESH FROM COCONIBZ</p>
+        <h2 id="promotions-title">Good things <em>to try.</em></h2>
+        <p>Product news and promotions from our team.</p>
+      </div>
+      <div class="promotion-grid" id="promotion-grid" aria-live="polite">
+        <p class="promotion-status" id="promotion-status">Promotions will appear here.</p>
+      </div>
+    </section>
+
+    <section class="gallery-section section-pad" id="gallery" aria-labelledby="gallery-title">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="eyebrow-line"></span> COCONIBZ IN GOOD COMPANY</p>
+        <h2 id="gallery-title">Little moments, <em>shared.</em></h2>
+        <p>Photos from our community and the moments that make every sip special.</p>
+      </div>
+      <figure class="gallery-stage" id="gallery-stage">
+        <img id="gallery-image" alt="" hidden>
+        <figcaption id="gallery-caption" hidden></figcaption>
+        <p class="gallery-status" id="gallery-status" role="status">Gallery moments are coming soon.</p>
+      </figure>
+      <div class="gallery-controls">
+        <button class="button button-account-admin" id="gallery-pause" type="button" disabled>Pause rotation</button>
+        <button class="button button-account-admin" id="gallery-next" type="button" disabled>Show another</button>
+      </div>
+    </section>
+
     <section class="locations section-pad" id="locations" aria-labelledby="locations-title">
       <div class="section-heading reveal"><p class="eyebrow"><span class="eyebrow-line"></span> COME SAY HELLO</p><h2 id="locations-title">A little closer <em>to you.</em></h2><p id="locations-subtitle">Six spots to find your new favorite sip.</p></div>
       <div class="location-grid">

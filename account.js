@@ -13,11 +13,18 @@ const accountRetailerInviteForm = document.querySelector("#account-retailer-invi
 const resendOtpButton = document.querySelector("#resend-otp-button");
 const ordersBody = document.querySelector("#orders-body");
 const loadMoreButton = document.querySelector("#load-more-orders");
+const profilePhotoForm = document.querySelector("#profile-photo-form");
+const profilePhotoInput = document.querySelector("#profile-photo");
+const profilePhotoImage = document.querySelector("#account-avatar");
+const profilePhotoMessage = document.querySelector("#profile-photo-message");
+const passwordChangeForm = document.querySelector("#password-change-form");
+const passwordChangeMessage = document.querySelector("#password-change-message");
 const pageSize = 100;
 let orderOffset = 0;
 let allOrders = [];
 let hasMoreOrders = true;
 let currentSession = null;
+let currentProfile = null;
 let requestedNext = new URLSearchParams(window.location.search).get("next");
 let pendingPhone = "";
 let pendingRetailerCode = "";
@@ -61,25 +68,48 @@ function setBusy(form, isBusy) {
 async function getProfile(userId) {
   const { data, error } = await backend.client
     .from("profiles")
-    .select("full_name, role")
+    .select("full_name, role, avatar_path")
     .eq("id", userId)
     .single();
   if (error) throw error;
   return data;
 }
 
+function setInlineMessage(target, text, isError = false) {
+  target.textContent = text;
+  target.classList.toggle("is-error", isError);
+}
+
+async function showProfilePhoto(path) {
+  if (!path) {
+    profilePhotoImage.removeAttribute("src");
+    profilePhotoImage.hidden = true;
+    return;
+  }
+  const { data, error } = await backend.client.storage
+    .from("profile-photos")
+    .createSignedUrl(path, 3600);
+  if (error) throw error;
+  profilePhotoImage.src = data.signedUrl;
+  profilePhotoImage.hidden = false;
+}
+
 async function showSignedInAccount(session) {
   currentSession = session;
   if (!session) {
+    currentProfile = null;
     authPanel.hidden = false;
     accountPanel.hidden = true;
     signupForm.hidden = false;
     loginForm.hidden = false;
     otpForm.hidden = true;
+    profilePhotoImage.removeAttribute("src");
+    profilePhotoImage.hidden = true;
     return;
   }
 
   const profile = await getProfile(session.user.id);
+  currentProfile = profile;
   authPanel.hidden = true;
   accountPanel.hidden = false;
   document.querySelector("#account-welcome").textContent = `Hello, ${profile.full_name || "Coconibz customer"}`;
@@ -88,6 +118,10 @@ async function showSignedInAccount(session) {
   portalLink.href = "operations.html";
   accountRetailerInviteForm.hidden = profile.role !== "customer";
   if (continueAfterAuth()) return;
+  await showProfilePhoto(profile.avatar_path);
+  if (window.location.hash === "#account-settings") {
+    document.querySelector("#account-settings").scrollIntoView();
+  }
   await loadOrders(true);
 }
 
@@ -310,6 +344,110 @@ loginForm.addEventListener("submit", async (event) => {
   } catch (error) {
     showMessage(`Could not sign in: ${error.message}`, true);
     setBusy(loginForm, false);
+  }
+});
+
+profilePhotoForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(profilePhotoForm, true);
+  setInlineMessage(profilePhotoMessage, "");
+  const file = profilePhotoInput.files[0];
+  const extensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+
+  try {
+    if (!currentSession || !currentProfile) throw new Error("Sign in again before uploading a profile photo.");
+    if (!file || !extensions[file.type]) throw new Error("Choose a JPG, PNG, or WebP image.");
+    if (file.size > 5 * 1024 * 1024) throw new Error("Profile photos must be 5 MB or smaller.");
+
+    const newPath = `${currentSession.user.id}/${crypto.randomUUID()}.${extensions[file.type]}`;
+    const { error: uploadError } = await backend.client.storage
+      .from("profile-photos")
+      .upload(newPath, file, { cacheControl: "3600", contentType: file.type, upsert: false });
+    if (uploadError) throw uploadError;
+
+    const oldPath = currentProfile.avatar_path;
+    const { error: updateError } = await backend.client
+      .from("profiles")
+      .update({ avatar_path: newPath })
+      .eq("id", currentSession.user.id);
+    if (updateError) {
+      const { error: cleanupError } = await backend.client.storage.from("profile-photos").remove([newPath]);
+      if (cleanupError) {
+        throw new Error(`Could not save your profile photo: ${updateError.message}. Temporary file cleanup also failed: ${cleanupError.message}`);
+      }
+      throw updateError;
+    }
+
+    currentProfile.avatar_path = newPath;
+    let displayError = null;
+    try {
+      await showProfilePhoto(newPath);
+    } catch (error) {
+      displayError = error;
+    }
+    profilePhotoForm.reset();
+    if (oldPath) {
+      const { error: removeError } = await backend.client.storage.from("profile-photos").remove([oldPath]);
+      if (removeError) {
+        setInlineMessage(profilePhotoMessage, `Photo updated, but the previous image could not be removed: ${removeError.message}`, true);
+        return;
+      }
+    }
+    if (displayError) {
+      setInlineMessage(profilePhotoMessage, `Photo updated, but its preview could not be loaded: ${displayError.message}`, true);
+      return;
+    }
+    setInlineMessage(profilePhotoMessage, "Profile photo updated.");
+  } catch (error) {
+    setInlineMessage(profilePhotoMessage, `Could not update your profile photo: ${error.message}`, true);
+  } finally {
+    setBusy(profilePhotoForm, false);
+  }
+});
+
+passwordChangeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(passwordChangeForm, true);
+  setInlineMessage(passwordChangeMessage, "");
+  const formData = new FormData(passwordChangeForm);
+  const currentPassword = String(formData.get("current_password"));
+  const newPassword = String(formData.get("new_password"));
+
+  try {
+    if (!currentSession?.user.phone) throw new Error("Your signed-in account does not have a phone number for password verification.");
+    if (newPassword !== String(formData.get("confirm_password"))) throw new Error("The new passwords do not match.");
+    if (newPassword.length < 8) throw new Error("The new password must be at least 8 characters.");
+
+    const { error: verifyError } = await backend.client.auth.signInWithPassword({
+      phone: normalizePhone(currentSession.user.phone),
+      password: currentPassword,
+    });
+    if (verifyError) throw new Error(`Current password was not verified: ${verifyError.message}`);
+
+    const { error: updateError } = await backend.client.auth.updateUser({ password: newPassword });
+    if (updateError) throw updateError;
+
+    const { error: signOutError } = await backend.client.auth.signOut({ scope: "global" });
+    let localSignOutError = null;
+    if (signOutError) {
+      const { error } = await backend.client.auth.signOut({ scope: "local" });
+      localSignOutError = error;
+    }
+    requestedNext = null;
+    await showSignedInAccount(null);
+    passwordChangeForm.reset();
+    if (signOutError) {
+      showMessage(
+        `Password updated, but other sessions could not be revoked: ${signOutError.message}.${localSignOutError ? ` This device could not be signed out: ${localSignOutError.message}.` : " This device has been signed out."} Sign out other devices manually.`,
+        true
+      );
+      return;
+    }
+    showMessage("Password updated. You have been signed out on all devices; sign in again with your new password.");
+  } catch (error) {
+    setInlineMessage(passwordChangeMessage, `Could not update your password: ${error.message}`, true);
+  } finally {
+    setBusy(passwordChangeForm, false);
   }
 });
 

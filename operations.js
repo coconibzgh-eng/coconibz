@@ -27,6 +27,7 @@ import "./supabase-client.js";
     customers: "Customers",
     feedback: "Customer feedback",
     audit: "Audit log",
+    marketing: "Marketing",
   };
 
   function node(tag, className = "", text = "") {
@@ -123,6 +124,35 @@ import "./supabase-client.js";
     return tr;
   }
 
+  async function signedProfilePhotos(profiles) {
+    const paths = [...new Set(profiles.map((profile) => profile.avatar_path).filter(Boolean))];
+    if (!paths.length) return new Map();
+    const { data, error } = await backend.client.storage
+      .from("profile-photos")
+      .createSignedUrls(paths, 3600);
+    if (error) throw error;
+    const urls = new Map();
+    (data || []).forEach((item) => {
+      if (item.error) throw new Error(`Could not load a profile photo: ${item.error}`);
+      if (item.path && item.signedUrl) urls.set(item.path, item.signedUrl);
+    });
+    return urls;
+  }
+
+  function profileNameCell(name, avatarPath, photoUrls) {
+    const wrapper = node("div", "ops-profile-cell");
+    const imageUrl = avatarPath ? photoUrls.get(avatarPath) : null;
+    if (imageUrl) {
+      const avatar = node("img", "ops-profile-avatar");
+      avatar.src = imageUrl;
+      avatar.alt = `${name || "Account"} profile photo`;
+      avatar.loading = "lazy";
+      wrapper.append(avatar);
+    }
+    wrapper.append(node("span", "", name || "Unnamed account"));
+    return wrapper;
+  }
+
   function section(title, subtitle = "") {
     const header = node("div", "ops-section-heading");
     header.append(node("h2", "", title));
@@ -196,6 +226,7 @@ import "./supabase-client.js";
       else if (state.page === "customers") await renderCustomers();
       else if (state.page === "feedback") await renderFeedback();
       else if (state.page === "audit") await renderAudit();
+      else if (state.page === "marketing") await renderMarketing();
     } catch (error) {
       content.replaceChildren(node("p", "portal-message is-error", error.message || "Could not load this section."));
     }
@@ -997,6 +1028,12 @@ import "./supabase-client.js";
         query.order("created_at", { ascending: false })),
     ]);
     if (retailerResult.error) throw retailerResult.error;
+    const retailers = retailerResult.data || [];
+    const retailerProfiles = retailers.length
+      ? await loadRows("profiles", "id,avatar_path", (query) =>
+        query.in("id", retailers.map((retailer) => retailer.user_id)))
+      : [];
+    const retailerPhotoUrls = await signedProfilePhotos(retailerProfiles);
 
     const inviteShop = select(availableShopOptions());
     if (state.preferredInviteShopId) inviteShop.value = state.preferredInviteShopId;
@@ -1105,7 +1142,8 @@ import "./supabase-client.js";
       }
     });
 
-    const retailerRows = (retailerResult.data || []).map((retailer) => {
+    const retailerAvatarPaths = new Map(retailerProfiles.map((profile) => [profile.id, profile.avatar_path]));
+    const retailerRows = retailers.map((retailer) => {
       const removeButton = node("button", "button ops-retailer-remove", "Remove access");
       removeButton.type = "button";
       removeButton.setAttribute("aria-label", `Remove retailer access for ${retailer.full_name || retailer.phone}`);
@@ -1133,7 +1171,7 @@ import "./supabase-client.js";
         }
       });
       return row([
-        retailer.full_name,
+        profileNameCell(retailer.full_name, retailerAvatarPaths.get(retailer.user_id), retailerPhotoUrls),
         retailer.phone,
         (retailer.shop_names || []).join(", "),
         time(retailer.created_at),
@@ -1302,26 +1340,48 @@ import "./supabase-client.js";
   }
 
   async function renderCustomers() {
-    const orders = await loadRows("orders", "customer_name,customer_phone,total,created_at,status,financial_status,fulfillment,delivery_area,delivery_address", (query) =>
-      query.order("created_at", { ascending: false }).limit(1000));
-    const grouped = new Map();
+    const [profiles, orders] = await Promise.all([
+      loadRows("profiles", "id,full_name,phone,avatar_path,created_at", (query) =>
+        query.in("role", ["customer", "retailer"]).order("created_at", { ascending: false }).limit(1000)),
+      loadRows("orders", "customer_id,customer_name,customer_phone,total,created_at,status,financial_status,fulfillment,delivery_area,delivery_address", (query) =>
+        query.order("created_at", { ascending: false }).limit(1000)),
+    ]);
+    const grouped = new Map(profiles.map((profile) => [profile.id, {
+      id: profile.id,
+      avatarPath: profile.avatar_path,
+      name: profile.full_name,
+      phone: profile.phone,
+      orders: 0,
+      value: 0,
+      latest: null,
+      locations: new Set(),
+    }]));
     orders.forEach((order) => {
-      const key = order.customer_phone;
-      const customer = grouped.get(key) || {
-        name: order.customer_name,
-        phone: key,
-        orders: 0,
-        value: 0,
-        latest: order.created_at,
-        locations: new Set(),
-      };
+      let customer = grouped.get(order.customer_id);
+      if (!customer) {
+        customer = {
+          id: order.customer_id,
+          avatarPath: null,
+          name: order.customer_name,
+          phone: order.customer_phone,
+          orders: 0,
+          value: 0,
+          latest: null,
+          locations: new Set(),
+        };
+        grouped.set(order.customer_id, customer);
+      }
+      if (!customer.name) {
+        customer.name = order.customer_name;
+      }
       customer.orders += 1;
       customer.value += Number(order.total);
+      if (!customer.latest || order.created_at > customer.latest) customer.latest = order.created_at;
       if (order.fulfillment === "delivery" && order.delivery_address) customer.locations.add(order.delivery_address);
-      grouped.set(key, customer);
     });
+    const customerPhotoUrls = await signedProfilePhotos(profiles);
     const rows = [...grouped.values()].map((customer) => row([
-      customer.name,
+      profileNameCell(customer.name, customer.avatarPath, customerPhotoUrls),
       customer.phone,
       customer.orders,
       money(customer.value),
@@ -1329,7 +1389,7 @@ import "./supabase-client.js";
       time(customer.latest),
     ]));
     content.replaceChildren(
-      node("p", "portal-subtitle", "Grouped by phone from the 1,000 most recent orders visible to your account."),
+      node("p", "portal-subtitle", "Customer accounts and their orders from the 1,000 most recent orders. Profile photos are private to the account owner and admins."),
       card("Customer order history", makeTable(
         ["Customer", "Phone", "Orders in loaded history", "Value in loaded history", "Delivery addresses", "Most recent order"],
         rows,
@@ -1389,6 +1449,236 @@ import "./supabase-client.js";
     );
   }
 
+  async function renderMarketing() {
+    if (state.profile.role !== "admin") {
+      content.replaceChildren(node("p", "portal-message is-error", "Marketing content is restricted to admins."));
+      return;
+    }
+
+    const imageExtensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+    async function uploadMarketingImage(file, folder) {
+      if (!file || !imageExtensions[file.type]) {
+        throw new Error("Choose a JPG, PNG, or WebP image.");
+      }
+      if (file.size > 10 * 1024 * 1024) throw new Error("Marketing images must be 10 MB or smaller.");
+      const path = `${folder}/${crypto.randomUUID()}.${imageExtensions[file.type]}`;
+      const { error } = await backend.client.storage
+        .from("site-marketing")
+        .upload(path, file, { cacheControl: "31536000", contentType: file.type, upsert: false });
+      if (error) throw error;
+      return path;
+    }
+
+    function marketingImageUrl(path) {
+      return backend.client.storage.from("site-marketing").getPublicUrl(path).data.publicUrl;
+    }
+
+    function newMarketingImage(path, alt) {
+      const image = node("img", "ops-marketing-thumb");
+      image.src = marketingImageUrl(path);
+      image.alt = alt;
+      image.loading = "lazy";
+      return image;
+    }
+
+    async function changeMarketingStatus(table, item, button) {
+      button.disabled = true;
+      try {
+        const { error } = await backend.client.from(table)
+          .update({ is_active: !item.is_active })
+          .eq("id", item.id);
+        if (error) throw error;
+        setMessage(item.is_active ? "Homepage content paused." : "Homepage content published.");
+        await renderPage();
+      } catch (error) {
+        showError(error);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function deleteMarketingItem(table, item, button) {
+      if (!window.confirm("Remove this item from the site?")) return;
+      button.disabled = true;
+      try {
+        const { error: rowError } = await backend.client.from(table).delete().eq("id", item.id);
+        if (rowError) throw rowError;
+        const { error: fileError } = await backend.client.storage.from("site-marketing").remove([item.object_path]);
+        if (fileError) {
+          setMessage(`The content record was removed, but its image could not be deleted: ${fileError.message}`, true);
+          await renderPage();
+          return;
+        }
+        setMessage("Homepage content removed.");
+        await renderPage();
+      } catch (error) {
+        showError(error);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    const galleryTitle = input("text", "Optional caption");
+    galleryTitle.maxLength = 120;
+    const galleryAlt = input("text", "Describe the image");
+    galleryAlt.maxLength = 200;
+    galleryAlt.required = true;
+    const galleryFile = input("file");
+    galleryFile.accept = "image/jpeg,image/png,image/webp";
+    galleryFile.required = true;
+    const galleryConsent = input("checkbox");
+    galleryConsent.required = true;
+    const galleryFeedback = node("p", "ops-form-message");
+    const galleryButton = node("button", "button button-primary", "Add gallery image");
+    galleryButton.type = "submit";
+    const galleryForm = node("form", "ops-form");
+    galleryForm.append(
+      field("Caption (optional)", galleryTitle),
+      field("Accessible image description", galleryAlt),
+      field("Image (JPG, PNG, WebP; up to 10 MB)", galleryFile),
+      field("I have permission to publish any identifiable people in this image", galleryConsent),
+      galleryFeedback,
+      galleryButton
+    );
+    galleryForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      galleryFeedback.classList.remove("is-error");
+      galleryFeedback.textContent = "";
+      galleryButton.disabled = true;
+      let uploadedPath = null;
+      try {
+        if (!galleryConsent.checked) throw new Error("Confirm that you have permission to publish identifiable people.");
+        uploadedPath = await uploadMarketingImage(galleryFile.files[0], "gallery");
+        const { error } = await backend.client.from("coconibz_gallery_images").insert({
+          title: galleryTitle.value.trim(),
+          alt_text: galleryAlt.value.trim(),
+          object_path: uploadedPath,
+        });
+        if (error) {
+          const { error: cleanupError } = await backend.client.storage.from("site-marketing").remove([uploadedPath]);
+          if (cleanupError) {
+            throw new Error(`Could not save gallery details: ${error.message}. Uploaded image cleanup also failed: ${cleanupError.message}`);
+          }
+          throw error;
+        }
+        setMessage("Gallery image published. It will rotate on the homepage.");
+        await renderPage();
+      } catch (error) {
+        showError(error, galleryFeedback);
+      } finally {
+        galleryButton.disabled = false;
+      }
+    });
+
+    const promotionTitle = input("text", "Promotion headline");
+    promotionTitle.maxLength = 120;
+    promotionTitle.required = true;
+    const promotionDescription = node("textarea");
+    promotionDescription.rows = 3;
+    promotionDescription.maxLength = 1000;
+    promotionDescription.placeholder = "Describe the product or offer";
+    const promotionFile = input("file");
+    promotionFile.accept = "image/jpeg,image/png,image/webp";
+    promotionFile.required = true;
+    const promotionTarget = input("text", "#flavors or https://...");
+    promotionTarget.maxLength = 500;
+    const promotionActive = input("checkbox");
+    promotionActive.checked = true;
+    const promotionFeedback = node("p", "ops-form-message");
+    const promotionButton = node("button", "button button-primary", "Publish promotion");
+    promotionButton.type = "submit";
+    const promotionForm = node("form", "ops-form");
+    promotionForm.append(
+      field("Headline", promotionTitle),
+      field("Description", promotionDescription),
+      field("Image (JPG, PNG, WebP; up to 10 MB)", promotionFile),
+      field("Link (optional; HTTPS or an on-site path)", promotionTarget),
+      field("Show on the homepage", promotionActive),
+      promotionFeedback,
+      promotionButton
+    );
+    promotionForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      promotionFeedback.classList.remove("is-error");
+      promotionFeedback.textContent = "";
+      promotionButton.disabled = true;
+      let uploadedPath = null;
+      try {
+        const target = promotionTarget.value.trim() || null;
+        if (target?.startsWith("//")) throw new Error("Use a full HTTPS URL or a path on this site.");
+        if (target && !target.startsWith("#") && !target.startsWith("/")) {
+          const parsedTarget = new URL(target);
+          if (parsedTarget.protocol !== "https:") throw new Error("Promotion links must use HTTPS.");
+        }
+        uploadedPath = await uploadMarketingImage(promotionFile.files[0], "promotions");
+        const { error } = await backend.client.from("coconibz_promotions").insert({
+          title: promotionTitle.value.trim(),
+          description: promotionDescription.value.trim(),
+          object_path: uploadedPath,
+          target_url: target,
+          is_active: promotionActive.checked,
+        });
+        if (error) {
+          const { error: cleanupError } = await backend.client.storage.from("site-marketing").remove([uploadedPath]);
+          if (cleanupError) {
+            throw new Error(`Could not save promotion details: ${error.message}. Uploaded image cleanup also failed: ${cleanupError.message}`);
+          }
+          throw error;
+        }
+        setMessage(promotionActive.checked ? "Promotion published on the homepage." : "Promotion saved as paused.");
+        await renderPage();
+      } catch (error) {
+        showError(error, promotionFeedback);
+      } finally {
+        promotionButton.disabled = false;
+      }
+    });
+
+    const [galleryImages, promotions] = await Promise.all([
+      loadRows("coconibz_gallery_images", "id,title,alt_text,object_path,is_active,created_at", (query) =>
+        query.order("created_at", { ascending: false })),
+      loadRows("coconibz_promotions", "id,title,description,object_path,target_url,is_active,created_at", (query) =>
+        query.order("created_at", { ascending: false })),
+    ]);
+
+    function marketingRows(items, table, titleColumn, descriptionColumn) {
+      return items.map((item) => {
+        const statusButton = node("button", "button ops-retailer-secondary", item.is_active ? "Pause" : "Publish");
+        statusButton.type = "button";
+        statusButton.addEventListener("click", () => changeMarketingStatus(table, item, statusButton));
+        const deleteButton = node("button", "button ops-retailer-remove", "Delete");
+        deleteButton.type = "button";
+        deleteButton.addEventListener("click", () => deleteMarketingItem(table, item, deleteButton));
+        const actions = node("div", "ops-payment-actions");
+        actions.append(statusButton, deleteButton);
+        return row([
+          newMarketingImage(item.object_path, item.alt_text || item[titleColumn]),
+          item[titleColumn],
+          descriptionColumn ? item[descriptionColumn] : item.alt_text,
+          item.is_active ? "Published" : "Paused",
+          time(item.created_at),
+          actions,
+        ]);
+      });
+    }
+
+    content.replaceChildren(
+      node("p", "portal-subtitle", "Manage homepage promotions and gallery images here. Public images rotate only while published; uploaded client photos require permission."),
+      card("Add to the homepage gallery", galleryForm, "One randomly chosen image is shown at a time and changes every 20 seconds."),
+      card("Gallery images", makeTable(
+        ["Image", "Caption", "Description", "Status", "Added", "Actions"],
+        marketingRows(galleryImages, "coconibz_gallery_images", "title", null),
+        "No gallery images have been added."
+      )),
+      card("Create a product promotion", promotionForm, "Promotions are displayed on the homepage; this does not buy or run ads on external platforms."),
+      card("Product promotions", makeTable(
+        ["Image", "Headline", "Description", "Status", "Added", "Actions"],
+        marketingRows(promotions, "coconibz_promotions", "title", "description"),
+        "No homepage promotions have been created."
+      ))
+    );
+  }
+
   async function renderAudit() {
     if (state.profile.role !== "admin") {
       content.replaceChildren(node("p", "portal-message is-error", "Audit details are restricted to admins."));
@@ -1419,7 +1709,7 @@ import "./supabase-client.js";
 
   function renderTabs() {
     const pages = state.profile.role === "admin"
-      ? ["overview", "inventory", "sales", "orders", "payments", "finance", "retailers", "customers", "feedback", "audit"]
+      ? ["overview", "inventory", "sales", "orders", "payments", "finance", "retailers", "customers", "marketing", "feedback", "audit"]
       : ["overview", "inventory", "sales", "orders", "finance", "feedback"];
     tabs.replaceChildren();
     pages.forEach((page) => {
