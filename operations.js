@@ -171,16 +171,17 @@ import "./supabase-client.js";
   }
 
   async function renderOverview() {
-    const [orders, inventory, sales, stockSummaryResult, stockMovements, products] = await Promise.all([
+    const [orders, inventory, sales, stockSummaryResult, stockMovements, products, shopPrices] = await Promise.all([
       loadRows("orders", "id,shop_id,customer_name,customer_phone,fulfillment,delivery_area,delivery_address,status,financial_status,total,created_at", (query) =>
         query.order("created_at", { ascending: false }).limit(100)),
       loadRows("shop_inventory", "shop_id,product_key,quantity_on_hand"),
       loadRows("retailer_sales", "shop_id,total_amount,sold_at", (query) =>
         query.order("sold_at", { ascending: false }).limit(100)),
       backend.client.rpc("coconibz_stock_supply_summary"),
-      loadRows("stock_movements", "shop_id,product_key,movement_type,quantity_change,note,created_at", (query) =>
+      loadRows("stock_movements", "shop_id,product_key,movement_type,quantity_change,supply_unit_price,supply_total,note,created_at", (query) =>
         query.order("created_at", { ascending: false }).limit(50)),
       loadRows("coconibz_products", "product_key,name"),
+      loadRows("shop_product_prices", "shop_id,product_key,unit_price"),
     ]);
     if (stockSummaryResult.error) throw stockSummaryResult.error;
     const openOrders = orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length;
@@ -192,6 +193,8 @@ import "./supabase-client.js";
       stockTotals.set(item.shop_id, (stockTotals.get(item.shop_id) || 0) + Number(item.quantity_on_hand));
     });
     const productNames = new Map(products.map((product) => [product.product_key, product.name]));
+    const wholesaleRates = new Map();
+    shopPrices.forEach((price) => wholesaleRates.set(price.shop_id, Number(price.unit_price)));
     const stockSummary = (stockSummaryResult.data || []).slice().sort((left, right) =>
       shopName(left.shop_id).localeCompare(shopName(right.shop_id))
     );
@@ -215,6 +218,7 @@ import "./supabase-client.js";
     ]));
     const stockSupplyRows = stockSummary.map((shop) => row([
       shopName(shop.shop_id),
+      money(wholesaleRates.get(shop.shop_id) ?? 12),
       Number(shop.units_supplied),
       stockTotals.get(shop.shop_id) || 0,
       time(shop.last_supplied_at),
@@ -226,6 +230,8 @@ import "./supabase-client.js";
       productNames.get(movement.product_key) || movement.product_key,
       label(movement.movement_type),
       movement.quantity_change > 0 ? `+${movement.quantity_change}` : movement.quantity_change,
+      movement.supply_unit_price === null ? "—" : money(movement.supply_unit_price),
+      movement.supply_total === null ? "—" : money(movement.supply_total),
       movement.note,
     ]));
     content.replaceChildren(
@@ -234,7 +240,7 @@ import "./supabase-client.js";
       card(
         "Stock supplied by retailer",
         makeTable(
-          ["Retailer / shop", "Total supplied (units)", "Current stock (units)", "Last supplied", "Last stock activity"],
+          ["Retailer / shop", "Wholesale price / bottle", "Total supplied (units)", "Current stock (units)", "Last supplied", "Last stock activity"],
           stockSupplyRows,
           "No retailer stock activity has been recorded."
         ),
@@ -243,11 +249,11 @@ import "./supabase-client.js";
       card(
         "Recent stock activity",
         makeTable(
-          ["Date", "Retailer / shop", "Product", "Activity", "Units", "Note"],
+          ["Date", "Retailer / shop", "Product", "Activity", "Units", "Rate / bottle", "Supply value", "Note"],
           stockMovementRows,
           "No stock movements have been recorded."
         ),
-        "Latest 50 stock movements, including supplies, sales, and order fulfillment."
+        "Latest 50 stock movements, including supplies, sales, and order fulfillment. New supplies record their wholesale rate; older entries are not repriced."
       ),
       card("Latest orders and deliveries", makeTable(
         ["Placed", "Customer", "Shop / delivery", "Total", "Order status", "Payment"],
@@ -258,17 +264,44 @@ import "./supabase-client.js";
   }
 
   async function renderInventory() {
-    const [inventory, products] = await Promise.all([
+    const [inventory, products, prices] = await Promise.all([
       loadRows("shop_inventory", "shop_id,product_key,quantity_on_hand,updated_at"),
       loadRows("coconibz_products", "product_key,name,is_active", (query) => query.order("name")),
+      loadRows("shop_product_prices", "shop_id,product_key,unit_price"),
     ]);
+    const priceByShopProduct = new Map(
+      prices.map((price) => [`${price.shop_id}:${price.product_key}`, Number(price.unit_price)])
+    );
+    const shopWholesalePrices = new Map();
+    prices.forEach((price) => {
+      if (!shopWholesalePrices.has(price.shop_id)) {
+        shopWholesalePrices.set(price.shop_id, Number(price.unit_price));
+      }
+    });
     const sections = [];
     if (state.profile.role === "admin") {
       const activeProducts = products.filter((item) => item.is_active);
       const shop = select(availableShopOptions());
       const note = input("text", "Batch or delivery note (optional)");
       const quantityInputs = new Map();
+      const priceLabels = new Map();
       const quantities = node("div", "ops-restock-grid");
+      const estimate = node("p", "ops-restock-total");
+      function wholesalePrice(productKey) {
+        return priceByShopProduct.get(`${shop.value}:${productKey}`) ?? 12;
+      }
+      function updateRestockEstimate() {
+        let totalUnits = 0;
+        let totalValue = 0;
+        activeProducts.forEach((product) => {
+          const quantity = Number(quantityInputs.get(product.product_key).value);
+          if (!Number.isInteger(quantity) || quantity <= 0) return;
+          totalUnits += quantity;
+          totalValue += quantity * wholesalePrice(product.product_key);
+        });
+        const bottleLabel = totalUnits === 1 ? "bottle" : "bottles";
+        estimate.textContent = `Estimated wholesale value: ${money(totalValue)} · ${totalUnits} ${bottleLabel}`;
+      }
       activeProducts.forEach((product) => {
         const quantity = input("number", "0");
         quantity.min = "0";
@@ -276,13 +309,27 @@ import "./supabase-client.js";
         quantity.value = "0";
         quantity.setAttribute("aria-label", `Quantity to add for ${product.name}`);
         quantityInputs.set(product.product_key, quantity);
-        quantities.append(field(product.name, quantity));
+        const quantityField = field(
+          `${product.name} · ${money(wholesalePrice(product.product_key))} / bottle`,
+          quantity
+        );
+        priceLabels.set(product.product_key, quantityField.firstChild);
+        quantity.addEventListener("input", updateRestockEstimate);
+        quantities.append(quantityField);
       });
+      shop.addEventListener("change", () => {
+        activeProducts.forEach((product) => {
+          priceLabels.get(product.product_key).textContent =
+            `${product.name} · ${money(wholesalePrice(product.product_key))} / bottle`;
+        });
+        updateRestockEstimate();
+      });
+      updateRestockEstimate();
       const form = node("form", "ops-form ops-restock-form");
       const feedback = node("p", "ops-form-message");
       const save = node("button", "button button-primary", "Restock selected flavors");
       save.type = "submit";
-      form.append(field("Retailer / shop", shop), field("Batch or delivery note (optional)", note), quantities, feedback, save);
+      form.append(field("Retailer / shop", shop), field("Batch or delivery note (optional)", note), quantities, estimate, feedback, save);
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         feedback.classList.remove("is-error");
@@ -327,7 +374,7 @@ import "./supabase-client.js";
           save.disabled = false;
         }
       });
-      sections.push(card("Restock retailer stock", form, "Enter quantities for one shop and submit them together; zero quantities are skipped. Every addition is recorded as a stock movement."));
+      sections.push(card("Restock retailer stock", form, "Wholesale prices are applied automatically. Enter quantities for one shop and submit them together; zero quantities are skipped."));
     }
     const inventoryByShop = new Map();
     inventory.forEach((item) => {
@@ -367,12 +414,13 @@ import "./supabase-client.js";
       return row([
         shop.name,
         ...productCells,
+        node("strong", "ops-stock-rate", `${money(shopWholesalePrices.get(shop.id) ?? 12)} / bottle`),
         node("strong", "ops-stock-total", totalStock),
         time(shopStock?.updatedAt),
       ]);
     });
     const stockTable = makeTable(
-      ["Retailer / shop", ...products.map((product) => product.name), "Total units", "Last updated"],
+      ["Retailer / shop", ...products.map((product) => product.name), "Wholesale price / bottle", "Total units", "Last updated"],
       stockRows,
       "No retailer stock records are available yet."
     );
@@ -446,7 +494,7 @@ import "./supabase-client.js";
       sale.note,
     ]));
     content.replaceChildren(
-      card("Record a retailer sale", form, "Saving a sale also writes an audit entry and deducts the sold quantities from that shop's stock."),
+      card("Record a retailer sale", form, "Retail sales to customers remain GHS 12 per bottle. Saving a sale writes an audit entry and deducts the sold quantities from that shop's stock."),
       card("Recent retailer sales", makeTable(["Date", "Shop", "Items", "Total", "Payment", "Note"], saleRows, "No retailer sales have been recorded."))
     );
   }
