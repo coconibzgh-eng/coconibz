@@ -1,5 +1,5 @@
 import "./supabase-client.js";
-import { invokeSms } from "./sms-client.js";
+import { invokeEdgeFunction } from "./edge-function-client.js";
 
 const backend = window.coconibzBackend;
 const portalMessage = document.querySelector("#portal-message");
@@ -216,7 +216,7 @@ async function updateOrderStatus(order, select) {
   order.status = select.value;
   let smsError = null;
   try {
-    await invokeSms(backend.client, "coconibz-notify-sms", {
+    await invokeEdgeFunction(backend.client, "coconibz-notify-sms", {
       kind: "order_status",
       order_id: order.id,
     });

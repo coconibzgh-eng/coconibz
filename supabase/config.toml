@@ -403,6 +403,9 @@ verify_jwt = true
 [functions.coconibz-admin-sms]
 verify_jwt = true
 
+[functions.coconibz-admin-delete-customer]
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

@@ -1,5 +1,5 @@
 import "./supabase-client.js";
-import { invokeSms } from "./sms-client.js";
+import { invokeEdgeFunction } from "./edge-function-client.js";
 
 const WHATSAPP_NUMBER = "233246344188";
 const shopSelect = document.querySelector("#shop-select");
@@ -253,7 +253,7 @@ orderSelected.addEventListener("click", async (event) => {
     const whatsappUrl = makeWhatsAppUrl(message, isDelivery ? WHATSAPP_NUMBER : pickupNumber);
     let smsError = null;
     try {
-      await invokeSms(backend.client, "coconibz-notify-sms", {
+      await invokeEdgeFunction(backend.client, "coconibz-notify-sms", {
         kind: "order_confirmation",
         order_id: orderId,
       });

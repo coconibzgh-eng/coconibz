@@ -71,7 +71,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 
 - Customer order requests are saved as **pending** before the site opens WhatsApp. If saving fails, WhatsApp is not opened and an error is shown.
 - Customers can sign in to view their own orders, filter by dates or flavor, sort them, and load older results. They can edit or cancel an order only while its status is **pending** and no payment activity has been recorded; once staff confirm it or a payment is recorded, contact COCONIBZ for help.
-- Admins can view all shops, update order statuses, manage retailer access, and filter order requests.
+- Admins can view all shops, update order statuses, manage retailer access, and filter order requests. Under **Operations → Customers**, admins can delete a customer account. Active orders must be completed or cancelled first. Deletion removes the login, profile photo, and customer feedback, frees the phone number for a new signup, and retains past order totals/items with the customer name, phone, and full delivery address anonymized.
 - Retailers can view and update orders only for their assigned shop(s). Their read-only Finance tab shows only assigned-shop balances and payment history; payment entry, edits, and other retailers' finance records remain admin-only.
 - The financial report counts orders marked **completed** as sales; pending, cancelled, and other in-progress requests are excluded.
 - Delivery orders are recorded separately as unassigned deliveries because the site does not currently route deliveries to a specific shop.
@@ -79,7 +79,7 @@ The Shop 5 number, **+233 59 544 1825**, is also the owner admin number. That ac
 
 ## 7. Enable the operations dashboard
 
-The additive migrations in `supabase/migrations/` extend the existing shops/orders database with retailer inventory, stock movements, retailer sales, finance and payment records, retailer invite codes, feedback, audit logs, customer pending-order editing/cancellation, and the operations RPCs.
+The additive migrations in `supabase/migrations/` extend the existing shops/orders database with retailer inventory, stock movements, retailer sales, finance and payment records, retailer invite codes, feedback, audit logs, customer pending-order editing/cancellation, customer account deletion with order anonymization, and the operations RPCs.
 
 For an existing project that already has the schema from `supabase-schema.sql`, apply the additive migration once. With the Supabase CLI installed and authenticated locally:
 

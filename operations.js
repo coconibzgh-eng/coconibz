@@ -1,5 +1,5 @@
 import "./supabase-client.js";
-import { invokeSms } from "./sms-client.js";
+import { invokeEdgeFunction } from "./edge-function-client.js";
 
 (() => {
   const backend = window.coconibzBackend;
@@ -1258,7 +1258,7 @@ import { invokeSms } from "./sms-client.js";
           }
           let smsError = null;
           try {
-            await invokeSms(backend.client, "coconibz-notify-sms", {
+            await invokeEdgeFunction(backend.client, "coconibz-notify-sms", {
               kind: "order_status",
               order_id: order.id,
             });
@@ -1335,7 +1335,7 @@ import { invokeSms } from "./sms-client.js";
       }
       let smsError = null;
       try {
-        await invokeSms(backend.client, "coconibz-notify-sms", {
+        await invokeEdgeFunction(backend.client, "coconibz-notify-sms", {
           kind: "payment_update",
           order_id: orderSelect.value,
         });
@@ -1369,14 +1369,20 @@ import { invokeSms } from "./sms-client.js";
   }
 
   async function renderCustomers() {
+    if (state.profile.role !== "admin") {
+      content.replaceChildren(node("p", "portal-message is-error", "Customer account deletion is restricted to admins."));
+      return;
+    }
+
     const [profiles, orders] = await Promise.all([
-      loadRows("profiles", "id,full_name,phone,avatar_path,created_at", (query) =>
+      loadRows("profiles", "id,full_name,phone,role,avatar_path,created_at", (query) =>
         query.in("role", ["customer", "retailer"]).order("created_at", { ascending: false }).limit(1000)),
       loadRows("orders", "customer_id,customer_name,customer_phone,total,created_at,status,financial_status,fulfillment,delivery_area,delivery_address", (query) =>
         query.order("created_at", { ascending: false }).limit(1000)),
     ]);
     const grouped = new Map(profiles.map((profile) => [profile.id, {
       id: profile.id,
+      role: profile.role,
       avatarPath: profile.avatar_path,
       name: profile.full_name,
       phone: profile.phone,
@@ -1390,9 +1396,10 @@ import { invokeSms } from "./sms-client.js";
       if (!customer) {
         customer = {
           id: order.customer_id,
+          role: null,
           avatarPath: null,
-          name: order.customer_name,
-          phone: order.customer_phone,
+          name: order.customer_name || "Deleted customer",
+          phone: order.customer_phone || "",
           orders: 0,
           value: 0,
           latest: null,
@@ -1406,21 +1413,56 @@ import { invokeSms } from "./sms-client.js";
       customer.orders += 1;
       customer.value += Number(order.total);
       if (!customer.latest || order.created_at > customer.latest) customer.latest = order.created_at;
-      if (order.fulfillment === "delivery" && order.delivery_address) customer.locations.add(order.delivery_address);
+      if (order.customer_id && order.fulfillment === "delivery" && order.delivery_address) {
+        customer.locations.add(order.delivery_address);
+      }
     });
     const customerPhotoUrls = await signedProfilePhotos(profiles);
-    const rows = [...grouped.values()].map((customer) => row([
-      profileNameCell(customer.name, customer.avatarPath, customerPhotoUrls),
-      customer.phone,
-      customer.orders,
-      money(customer.value),
-      [...customer.locations].join("; "),
-      time(customer.latest),
-    ]));
+    const rows = [...grouped.values()].map((customer) => {
+      const actions = node("div", "ops-payment-actions");
+      if (customer.role === "customer") {
+        const deleteButton = node("button", "button ops-retailer-remove", "Delete account");
+        deleteButton.type = "button";
+        deleteButton.addEventListener("click", async () => {
+          if (!window.confirm(
+            `Permanently delete ${customer.name || "this customer"} (${customer.phone})? Their login and profile will be removed, their phone will be free for a new signup, and profile photos and feedback will be deleted. Existing order totals and items will remain, with the customer's name, phone, and full delivery address anonymized. Any active orders must be completed or cancelled first. This cannot be undone.`
+          )) return;
+
+          deleteButton.disabled = true;
+          try {
+            const data = await invokeEdgeFunction(
+              backend.client,
+              "coconibz-admin-delete-customer",
+              { user_id: customer.id }
+            );
+            if (!data?.deleted) throw new Error("The customer account was not deleted.");
+            await renderPage();
+            setMessage(
+              `Customer account deleted. ${data.anonymized_order_count} previous order${data.anonymized_order_count === 1 ? " was" : "s were"} anonymized; the phone number is available for a new signup.`
+            );
+          } catch (error) {
+            showError(error);
+            deleteButton.disabled = false;
+          }
+        });
+        actions.append(deleteButton);
+      } else {
+        actions.textContent = "—";
+      }
+      return row([
+        profileNameCell(customer.name, customer.avatarPath, customerPhotoUrls),
+        customer.phone,
+        customer.orders,
+        money(customer.value),
+        [...customer.locations].join("; "),
+        time(customer.latest),
+        actions,
+      ]);
+    });
     content.replaceChildren(
-      node("p", "portal-subtitle", "Customer accounts and their orders from the 1,000 most recent orders. Profile photos are private to the account owner and admins."),
+      node("p", "portal-subtitle", "Customer accounts and their orders from the 1,000 most recent orders. Deleting a customer removes their login, photo, and feedback while preserving anonymized order totals and items."),
       card("Customer order history", makeTable(
-        ["Customer", "Phone", "Orders in loaded history", "Value in loaded history", "Delivery addresses", "Most recent order"],
+        ["Customer", "Phone", "Orders in loaded history", "Value in loaded history", "Delivery addresses", "Most recent order", "Actions"],
         rows,
         "Customer history appears after orders are placed."
       ))
@@ -1720,7 +1762,7 @@ import { invokeSms } from "./sms-client.js";
       manualSmsFeedback.textContent = "";
       manualSmsButton.disabled = true;
       try {
-        const data = await invokeSms(backend.client, "coconibz-admin-sms", {
+        const data = await invokeEdgeFunction(backend.client, "coconibz-admin-sms", {
           kind: "manual",
           phone: manualSmsPhone.value,
           message: manualSmsMessage.value.trim(),
@@ -1761,7 +1803,7 @@ import { invokeSms } from "./sms-client.js";
       if (!window.confirm(`Send this promotion to ${smsSubscriberResult.count} opted-in customer(s)?`)) return;
       promotionSmsButton.disabled = true;
       try {
-        const data = await invokeSms(backend.client, "coconibz-admin-sms", {
+        const data = await invokeEdgeFunction(backend.client, "coconibz-admin-sms", {
           kind: "promotion",
           message: promotionSmsMessage.value.trim(),
         });
