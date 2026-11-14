@@ -15,7 +15,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  customer_phone text;
+  v_customer_phone text;
   order_ids uuid[];
   feedback_ids uuid[];
   anonymized_orders integer := 0;
@@ -25,7 +25,7 @@ begin
   end if;
 
   select profile.phone
-    into customer_phone
+    into v_customer_phone
     from public.profiles as profile
     where profile.id = p_customer_id
       and profile.role = 'customer';
@@ -51,8 +51,11 @@ begin
     into feedback_ids
     from public.customer_feedback as feedback
     where feedback.customer_id = p_customer_id
-       or regexp_replace(coalesce(feedback.customer_phone, ''), '[^0-9]', '', 'g')
-          = regexp_replace(customer_phone, '[^0-9]', '', 'g');
+       or (
+         regexp_replace(v_customer_phone, '[^0-9]', '', 'g') <> ''
+         and regexp_replace(coalesce(feedback.customer_phone, ''), '[^0-9]', '', 'g')
+             = regexp_replace(v_customer_phone, '[^0-9]', '', 'g')
+       );
 
   update public.orders
     set customer_id = null,
