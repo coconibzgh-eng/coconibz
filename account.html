@@ -36,7 +36,21 @@
     <p class="portal-message" id="staff-access-note" hidden>Retailer access requires a one-time code from a COCONIBZ admin. Admin accounts are assigned separately.</p>
 
     <section class="auth-grid" id="auth-panel" aria-label="Sign in or create an account">
-      <form class="portal-card auth-form" id="signup-form">
+      <div class="auth-choice-grid">
+        <button class="auth-choice auth-choice-signup" id="signup-choice" type="button" aria-expanded="false" aria-controls="signup-form">
+          <span class="auth-choice-kicker">NEW TO COCONIBZ?</span>
+          <span class="auth-choice-title">SignUP</span>
+          <span class="auth-choice-hint">Create an account to save and track your orders.</span>
+          <span class="auth-choice-action">Get started <span aria-hidden="true">↗</span></span>
+        </button>
+        <button class="auth-choice auth-choice-signin" id="signin-choice" type="button" aria-expanded="false" aria-controls="login-form">
+          <span class="auth-choice-kicker">ALREADY A MEMBER?</span>
+          <span class="auth-choice-title">SignIN</span>
+          <span class="auth-choice-hint">Welcome back. Sign in to view your account.</span>
+          <span class="auth-choice-action">Sign in <span aria-hidden="true">↗</span></span>
+        </button>
+      </div>
+      <form class="portal-card auth-form auth-form-signup" id="signup-form" hidden>
         <h2>Join COCONIBZ</h2>
         <p>Create a customer account with your name and phone number.</p>
         <label for="signup-name">Full name</label>
@@ -50,7 +64,7 @@
         <button class="button button-primary" type="submit">Create account</button>
       </form>
 
-      <form class="portal-card auth-form" id="login-form">
+      <form class="portal-card auth-form auth-form-signin" id="login-form" hidden>
         <h2>Welcome back</h2>
         <p>Sign in with your phone number and password. This browser remembers your signed-in session; log out on shared devices.</p>
         <label for="login-phone">Phone number</label>
@@ -66,7 +80,7 @@
         <button class="button button-primary" type="submit">Sign in</button>
       </form>
 
-      <form class="portal-card auth-form otp-form" id="otp-form" hidden>
+      <form class="portal-card auth-form auth-form-signup otp-form" id="otp-form" hidden>
         <h2>Verify your phone</h2>
         <p>Enter the SMS verification code sent to <strong id="otp-phone-label"></strong>.</p>
         <label for="otp-code">Verification code</label>

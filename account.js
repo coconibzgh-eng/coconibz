@@ -6,8 +6,11 @@ const ordersMessage = document.querySelector("#orders-message");
 const authPanel = document.querySelector("#auth-panel");
 const accountPanel = document.querySelector("#account-panel");
 const staffAccessNote = document.querySelector("#staff-access-note");
+const authChoiceGrid = document.querySelector(".auth-choice-grid");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
+const signupChoice = document.querySelector("#signup-choice");
+const signinChoice = document.querySelector("#signin-choice");
 const rememberedPhoneList = document.querySelector("#remembered-phones");
 const rememberLoginCheckbox = document.querySelector("#remember-login");
 const clearRememberedPhonesButton = document.querySelector("#clear-remembered-phones");
@@ -135,6 +138,27 @@ function setBusy(form, isBusy) {
   });
 }
 
+function setAuthChoice(choice) {
+  const signupExpanded = choice === "signup";
+  const signinExpanded = choice === "signin";
+  signupForm.hidden = !signupExpanded;
+  loginForm.hidden = !signinExpanded;
+  signupChoice.setAttribute("aria-expanded", String(signupExpanded));
+  signinChoice.setAttribute("aria-expanded", String(signinExpanded));
+}
+
+signupChoice.addEventListener("click", () => {
+  const isExpanded = signupChoice.getAttribute("aria-expanded") === "true";
+  setAuthChoice(isExpanded ? null : "signup");
+  if (!isExpanded) signupForm.querySelector("input").focus();
+});
+
+signinChoice.addEventListener("click", () => {
+  const isExpanded = signinChoice.getAttribute("aria-expanded") === "true";
+  setAuthChoice(isExpanded ? null : "signin");
+  if (!isExpanded) loginForm.querySelector("input").focus();
+});
+
 async function getProfile(userId) {
   const { data, error } = await backend.client
     .from("profiles")
@@ -170,8 +194,8 @@ async function showSignedInAccount(session) {
     currentProfile = null;
     authPanel.hidden = false;
     accountPanel.hidden = true;
-    signupForm.hidden = false;
-    loginForm.hidden = false;
+    setAuthChoice(requestedNext ? "signin" : null);
+    authChoiceGrid.hidden = false;
     otpForm.hidden = true;
     profilePhotoImage.removeAttribute("src");
     profilePhotoImage.hidden = true;
@@ -427,8 +451,9 @@ signupForm.addEventListener("submit", async (event) => {
     }
 
     document.querySelector("#otp-phone-label").textContent = pendingPhone;
+    setAuthChoice("signup");
+    authChoiceGrid.hidden = true;
     signupForm.hidden = true;
-    loginForm.hidden = true;
     otpForm.hidden = false;
     showMessage("Enter the SMS code to verify your phone.");
   } catch (error) {
