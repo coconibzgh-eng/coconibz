@@ -64,6 +64,7 @@
 .flavor-quantity .control-label{color:var(--green-dark)}
 @media(max-width:650px){.order-controls .shop-picker{flex:1 1 100%}.order-controls .shop-picker select{width:100%}.order-controls .order-hint{flex-basis:100%}.order-controls .order-selected{width:100%}.flavor-quantity{gap:8px}}
 .order-controls{width:min(100%,860px)}
+.flavors .order-controls{margin:24px auto 0}
 .fulfillment-control{display:grid;flex:1 1 240px;gap:8px;margin:0;padding:0;border:0}
 .fulfillment-control legend{padding:0}
 .fulfillment-options{display:flex;flex-wrap:wrap;gap:8px}
