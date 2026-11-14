@@ -10,7 +10,12 @@ const authChoiceGrid = document.querySelector(".auth-choice-grid");
 const signupForm = document.querySelector("#signup-form");
 const loginForm = document.querySelector("#login-form");
 const signupChoice = document.querySelector("#signup-choice");
+const retailerSignupChoice = document.querySelector("#retailer-signup-choice");
 const signinChoice = document.querySelector("#signin-choice");
+const signupFormTitle = document.querySelector("#signup-form-title");
+const signupFormDescription = document.querySelector("#signup-form-description");
+const retailerCodeField = document.querySelector("#signup-retailer-code-field");
+const retailerCodeInput = document.querySelector("#signup-retailer-code");
 const rememberedPhoneList = document.querySelector("#remembered-phones");
 const rememberLoginCheckbox = document.querySelector("#remember-login");
 const clearRememberedPhonesButton = document.querySelector("#clear-remembered-phones");
@@ -52,6 +57,7 @@ let currentProfile = null;
 let requestedNext = new URLSearchParams(window.location.search).get("next");
 let pendingPhone = "";
 let pendingRetailerCode = "";
+let selectedSignupType = "customer";
 
 staffAccessNote.hidden = !["operations.html", "admin.html"].includes(requestedNext);
 
@@ -139,17 +145,36 @@ function setBusy(form, isBusy) {
 }
 
 function setAuthChoice(choice) {
-  const signupExpanded = choice === "signup";
+  const signupExpanded = choice === "signup" || choice === "retailer";
+  const retailerSignup = choice === "retailer";
   const signinExpanded = choice === "signin";
+  selectedSignupType = retailerSignup ? "retailer" : "customer";
   signupForm.hidden = !signupExpanded;
   loginForm.hidden = !signinExpanded;
-  signupChoice.setAttribute("aria-expanded", String(signupExpanded));
+  signupForm.classList.toggle("auth-form-retailer", retailerSignup);
+  otpForm.classList.toggle("auth-form-retailer", retailerSignup);
+  retailerCodeField.hidden = !retailerSignup;
+  retailerCodeInput.disabled = !retailerSignup;
+  retailerCodeInput.required = retailerSignup;
+  if (!retailerSignup) retailerCodeInput.value = "";
+  signupFormTitle.textContent = retailerSignup ? "Retailer SignUP" : "Join COCONIBZ";
+  signupFormDescription.textContent = retailerSignup
+    ? "Create your retailer account with the invite code provided by your admin."
+    : "Create a customer account with your name and phone number.";
+  signupChoice.setAttribute("aria-expanded", String(choice === "signup"));
+  retailerSignupChoice.setAttribute("aria-expanded", String(retailerSignup));
   signinChoice.setAttribute("aria-expanded", String(signinExpanded));
 }
 
 signupChoice.addEventListener("click", () => {
   const isExpanded = signupChoice.getAttribute("aria-expanded") === "true";
   setAuthChoice(isExpanded ? null : "signup");
+  if (!isExpanded) signupForm.querySelector("input").focus();
+});
+
+retailerSignupChoice.addEventListener("click", () => {
+  const isExpanded = retailerSignupChoice.getAttribute("aria-expanded") === "true";
+  setAuthChoice(isExpanded ? null : "retailer");
   if (!isExpanded) signupForm.querySelector("input").focus();
 });
 
@@ -436,7 +461,9 @@ signupForm.addEventListener("submit", async (event) => {
   showMessage("Creating your account...");
   const formData = new FormData(signupForm);
   pendingPhone = normalizePhone(String(formData.get("phone")));
-  pendingRetailerCode = String(formData.get("retailer_code") || "").trim();
+  pendingRetailerCode = selectedSignupType === "retailer"
+    ? String(formData.get("retailer_code") || "").trim()
+    : "";
 
   try {
     const { data, error } = await backend.client.auth.signUp({
@@ -451,7 +478,7 @@ signupForm.addEventListener("submit", async (event) => {
     }
 
     document.querySelector("#otp-phone-label").textContent = pendingPhone;
-    setAuthChoice("signup");
+    setAuthChoice(pendingRetailerCode ? "retailer" : "signup");
     authChoiceGrid.hidden = true;
     signupForm.hidden = true;
     otpForm.hidden = false;

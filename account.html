@@ -38,9 +38,15 @@
     <section class="auth-grid" id="auth-panel" aria-label="Sign in or create an account">
       <div class="auth-choice-grid">
         <button class="auth-choice auth-choice-signup" id="signup-choice" type="button" aria-expanded="false" aria-controls="signup-form">
-          <span class="auth-choice-kicker">NEW TO COCONIBZ?</span>
-          <span class="auth-choice-title">SignUP</span>
+          <span class="auth-choice-kicker">FOR CUSTOMERS</span>
+          <span class="auth-choice-title">Customer SignUP</span>
           <span class="auth-choice-hint">Create an account to save and track your orders.</span>
+          <span class="auth-choice-action">Get started <span aria-hidden="true">↗</span></span>
+        </button>
+        <button class="auth-choice auth-choice-retailer" id="retailer-signup-choice" type="button" aria-expanded="false" aria-controls="signup-form">
+          <span class="auth-choice-kicker">FOR RETAILERS</span>
+          <span class="auth-choice-title">Retailer SignUP</span>
+          <span class="auth-choice-hint">Sign up with the invite code provided by your admin.</span>
           <span class="auth-choice-action">Get started <span aria-hidden="true">↗</span></span>
         </button>
         <button class="auth-choice auth-choice-signin" id="signin-choice" type="button" aria-expanded="false" aria-controls="login-form">
@@ -51,14 +57,16 @@
         </button>
       </div>
       <form class="portal-card auth-form auth-form-signup" id="signup-form" hidden>
-        <h2>Join COCONIBZ</h2>
-        <p>Create a customer account with your name and phone number.</p>
+        <h2 id="signup-form-title">Join COCONIBZ</h2>
+        <p id="signup-form-description">Create a customer account with your name and phone number.</p>
         <label for="signup-name">Full name</label>
         <input id="signup-name" name="full_name" autocomplete="name" required maxlength="100">
         <label for="signup-phone">Phone number</label>
         <input id="signup-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+233..." required pattern="\+[1-9][0-9]{7,14}" title="Use international format, for example +233241234567">
-        <label for="signup-retailer-code">Retailer invite code <span>(optional)</span></label>
-        <input id="signup-retailer-code" name="retailer_code" autocomplete="off" placeholder="Enter a code from your admin">
+        <div class="retailer-code-field" id="signup-retailer-code-field" hidden>
+          <label for="signup-retailer-code">Retailer invite code from admin</label>
+          <input id="signup-retailer-code" name="retailer_code" autocomplete="off" placeholder="Enter your invite code from an admin" disabled>
+        </div>
         <label for="signup-password">Password</label>
         <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
         <button class="button button-primary" type="submit">Create account</button>
