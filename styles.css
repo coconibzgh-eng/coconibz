@@ -203,6 +203,9 @@
 .account-security-form label{display:grid;gap:5px;color:var(--brown-dark);font-size:12px;font-weight:700}
 .account-security-form input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:white;color:var(--ink);font:inherit;font-size:13px}
 .account-security-form input[type=file]{padding:7px}
+.account-security-form input[type=checkbox]{width:auto;min-height:auto;margin:2px 0 0}
+.account-security-form .sms-consent{display:flex;align-items:flex-start;gap:8px}
+.account-security-form[hidden]{display:none}
 .account-security-form .portal-message{margin:0;padding:0}
 .account-avatar{width:92px;height:92px;object-fit:cover;border:2px solid var(--green-pale);border-radius:50%}
 .account-avatar[hidden]{display:none}

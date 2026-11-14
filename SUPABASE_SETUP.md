@@ -5,8 +5,8 @@ The site remains one project. These steps connect its customer accounts, order h
 ## 1. Create a Supabase project
 
 1. Create a project in your Supabase account and save its database password privately.
-2. In **Authentication → Providers**, enable **Phone**.
-3. Configure a supported SMS provider and its credentials in Supabase. SMS delivery may incur provider charges.
+2. In **Authentication → Providers**, enable **Phone**. NotifyGH will send phone verification codes through a Supabase Send SMS Hook.
+3. Keep the existing SMS provider active until a NotifyGH verification test succeeds; only then remove the Vonage credentials.
 4. In **Authentication → URL Configuration**, set the production site URL and add the site's development URL to the allowed redirect URLs while testing.
 5. Phone sign-up and SMS verification are used for registration; customers use their verified phone number and password for later sign-in.
 
@@ -103,7 +103,23 @@ Retailer stock starts at zero until an admin records a restock. Retailer sales c
 - The homepage weather widget asks users to request browser location, or they can enter a city instead. Coordinates or the city search are sent to Open-Meteo to retrieve weather; the site does not store them. Weather refreshes every 15 minutes while the page is open.
 - Apply the additive migrations in `supabase/migrations/` to create the private profile-photo bucket, public marketing-image bucket, and gallery/promotion tables. Do not make profile photos publicly readable.
 
-## 9. Publish a GitHub Pages test site
+## 9. Configure NotifyGH SMS
+
+The site sends signup/verification OTPs through Supabase Auth's signed **Send SMS Hook**. Separate authenticated Edge Functions handle order confirmations, order and delivery status updates, payment updates, one-recipient admin messages, and promotions for customers who explicitly opt in.
+
+1. Apply the `20261114100000_notifygh_sms.sql` migration to the linked Supabase project. Review `npx supabase migration list --remote` first, then use `npx supabase db push --remote` or apply that migration once in the SQL Editor.
+2. In the Supabase Dashboard, open **Edge Functions → Secrets** and add:
+   - `NOTIFYGH_API_KEY` — your NotifyGH API key.
+   - `NOTIFYGH_SENDER_ID` — optional; add only a sender ID approved for your NotifyGH account.
+   - `SEND_SMS_HOOK_SECRETS` — the signing secret created for the Supabase Send SMS Hook.
+   Never paste these values into chat, commit them, or put them in `.env`, `supabase-config.js`, or browser code.
+3. Deploy `coconibz-auth-sms`, `coconibz-notify-sms`, and `coconibz-admin-sms` with the Supabase CLI. The auth function verifies Supabase's signed webhook request; the other two require a signed-in Supabase user and check the caller's role or order access.
+4. In **Authentication → Hooks**, configure the **Send SMS Hook** to call `https://fobtkaxussjzkyrzyrxu.supabase.co/functions/v1/coconibz-auth-sms` and use the matching signing secret. Leave Phone authentication enabled. The OTP and NotifyGH API key are handled only by the server.
+5. Test a new signup/OTP, a customer order, a staff status change, and an admin payment update before removing Vonage. Then test manual SMS and promotional SMS from **Operations → Marketing**. Promotional delivery is restricted to customer accounts that opt in under **Account & security**; the preference is off by default.
+
+NotifyGH wallet balance and any approved sender ID affect delivery. The portal reports whether NotifyGH accepted a message; carrier delivery is not guaranteed. An SMS failure is reported separately from the order or payment update, which remains saved. Promotions are not sent to accounts that have not opted in.
+
+## 10. Publish a GitHub Pages test site
 
 The intended test URL for this repository is `https://coconibzgh-eng.github.io/coconibz/`. To activate it:
 

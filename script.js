@@ -1,4 +1,5 @@
 import "./supabase-client.js";
+import { invokeSms } from "./sms-client.js";
 
 const WHATSAPP_NUMBER = "233246344188";
 const shopSelect = document.querySelector("#shop-select");
@@ -26,6 +27,7 @@ const backend = window.coconibzBackend;
 const PENDING_ORDER_KEY = "coconibz-pending-order";
 let currentSession = null;
 let orderSubmissionInProgress = false;
+let pendingWhatsAppUrl = null;
 
 function formatGhs(amount) {
   return `GHS ${amount}`;
@@ -201,6 +203,10 @@ function updateFulfillmentFields() {
 
 orderSelected.addEventListener("click", async (event) => {
   event.preventDefault();
+  if (pendingWhatsAppUrl) {
+    window.location.assign(pendingWhatsAppUrl);
+    return;
+  }
   if (orderSelected.getAttribute("aria-disabled") === "true") {
     return;
   }
@@ -235,7 +241,7 @@ orderSelected.addEventListener("click", async (event) => {
   const message = `Hello COCONIBZ, I would like to order:\n${itemLines}\nSubtotal: ${formatGhs(subtotal)}.\n${serviceLines}\nPlease confirm availability.`;
 
   try {
-    const { error } = await backend.client.rpc("place_coconibz_order", {
+    const { data: orderId, error } = await backend.client.rpc("place_coconibz_order", {
       p_shop_id: shopId,
       p_fulfillment: fulfillment,
       p_delivery_area: isDelivery ? deliveryArea.value : null,
@@ -244,7 +250,27 @@ orderSelected.addEventListener("click", async (event) => {
     });
     if (error) throw error;
     sessionStorage.removeItem(PENDING_ORDER_KEY);
-    window.location.assign(makeWhatsAppUrl(message, isDelivery ? WHATSAPP_NUMBER : pickupNumber));
+    const whatsappUrl = makeWhatsAppUrl(message, isDelivery ? WHATSAPP_NUMBER : pickupNumber);
+    let smsError = null;
+    try {
+      await invokeSms(backend.client, "coconibz-notify-sms", {
+        kind: "order_confirmation",
+        order_id: orderId,
+      });
+    } catch (error) {
+      smsError = error;
+    }
+    if (smsError) {
+      pendingWhatsAppUrl = whatsappUrl;
+      orderSubmissionInProgress = false;
+      orderSelected.removeAttribute("aria-disabled");
+      orderSelected.removeAttribute("aria-busy");
+      orderSelected.tabIndex = 0;
+      orderSelected.textContent = "Continue to WhatsApp";
+      orderSummary.textContent = `Your order was saved, but its confirmation SMS could not be sent (${smsError.message}). Continue to WhatsApp to complete your request.`;
+      return;
+    }
+    window.location.assign(whatsappUrl);
   } catch (error) {
     orderSubmissionInProgress = false;
     updateCombinedOrder();

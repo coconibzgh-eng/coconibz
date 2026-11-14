@@ -1,4 +1,5 @@
 import "./supabase-client.js";
+import { invokeSms } from "./sms-client.js";
 
 (() => {
   const backend = window.coconibzBackend;
@@ -1255,8 +1256,22 @@ import "./supabase-client.js";
             status.value = order.status;
             return;
           }
-          setMessage("Order status updated.");
+          let smsError = null;
+          try {
+            await invokeSms(backend.client, "coconibz-notify-sms", {
+              kind: "order_status",
+              order_id: order.id,
+            });
+          } catch (error) {
+            smsError = error;
+          }
           await renderPage();
+          setMessage(
+            smsError
+              ? `Order status updated, but its SMS notification failed: ${smsError.message}`
+              : "Order status updated and the SMS request was accepted.",
+            Boolean(smsError)
+          );
         });
       }
       const customer = node("div");
@@ -1318,8 +1333,22 @@ import "./supabase-client.js";
         showError(error, feedback);
         return;
       }
-      setMessage("Payment status recorded.");
+      let smsError = null;
+      try {
+        await invokeSms(backend.client, "coconibz-notify-sms", {
+          kind: "payment_update",
+          order_id: orderSelect.value,
+        });
+      } catch (error) {
+        smsError = error;
+      }
       await renderPage();
+      setMessage(
+        smsError
+          ? `Payment status recorded, but its SMS notification failed: ${smsError.message}`
+          : "Payment status recorded and the SMS request was accepted.",
+        Boolean(smsError)
+      );
     });
     const orderMap = new Map(orders.map((order) => [order.id, order]));
     const rows = payments.map((payment) => {
@@ -1634,12 +1663,18 @@ import "./supabase-client.js";
       }
     });
 
-    const [galleryImages, promotions] = await Promise.all([
+    const [galleryImages, promotions, smsSubscriberResult] = await Promise.all([
       loadRows("coconibz_gallery_images", "id,title,alt_text,object_path,is_active,created_at", (query) =>
         query.order("created_at", { ascending: false })),
       loadRows("coconibz_promotions", "id,title,description,object_path,target_url,is_active,created_at", (query) =>
         query.order("created_at", { ascending: false })),
+      backend.client.from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "customer")
+        .eq("sms_marketing_opt_in", true),
     ]);
+    if (smsSubscriberResult.error) throw smsSubscriberResult.error;
+    if (smsSubscriberResult.count === null) throw new Error("Could not count customers who opted in to promotional SMS.");
 
     function marketingRows(items, table, titleColumn, descriptionColumn) {
       return items.map((item) => {
@@ -1662,6 +1697,89 @@ import "./supabase-client.js";
       });
     }
 
+    const manualSmsPhone = input("tel", "+233...");
+    manualSmsPhone.required = true;
+    const manualSmsMessage = node("textarea");
+    manualSmsMessage.rows = 4;
+    manualSmsMessage.maxLength = 1000;
+    manualSmsMessage.required = true;
+    manualSmsMessage.placeholder = "Write a message of up to 1,000 characters";
+    const manualSmsFeedback = node("p", "ops-form-message");
+    const manualSmsButton = node("button", "button button-primary", "Send SMS");
+    manualSmsButton.type = "submit";
+    const manualSmsForm = node("form", "ops-form");
+    manualSmsForm.append(
+      field("Recipient phone number", manualSmsPhone),
+      field("Message", manualSmsMessage),
+      manualSmsFeedback,
+      manualSmsButton
+    );
+    manualSmsForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      manualSmsFeedback.classList.remove("is-error");
+      manualSmsFeedback.textContent = "";
+      manualSmsButton.disabled = true;
+      try {
+        const data = await invokeSms(backend.client, "coconibz-admin-sms", {
+          kind: "manual",
+          phone: manualSmsPhone.value,
+          message: manualSmsMessage.value.trim(),
+        });
+        if (!data?.sent) throw new Error("NotifyGH did not confirm the SMS request.");
+        await renderPage();
+        setMessage("Manual SMS accepted by NotifyGH.");
+      } catch (error) {
+        showError(error, manualSmsFeedback);
+      } finally {
+        manualSmsButton.disabled = false;
+      }
+    });
+
+    const promotionSmsMessage = node("textarea");
+    promotionSmsMessage.rows = 4;
+    promotionSmsMessage.maxLength = 1000;
+    promotionSmsMessage.required = true;
+    promotionSmsMessage.placeholder = "Write a promotional message of up to 1,000 characters";
+    const promotionSmsFeedback = node("p", "ops-form-message");
+    const promotionSmsButton = node("button", "button button-primary", "Send to opted-in customers");
+    promotionSmsButton.type = "submit";
+    const promotionSmsForm = node("form", "ops-form");
+    promotionSmsForm.append(
+      field("Promotional SMS", promotionSmsMessage),
+      node("p", "portal-subtitle", `${smsSubscriberResult.count} customer${smsSubscriberResult.count === 1 ? "" : "s"} opted in. Only customers who enabled SMS promotions in their account will receive this message.`),
+      promotionSmsFeedback,
+      promotionSmsButton
+    );
+    promotionSmsForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      promotionSmsFeedback.classList.remove("is-error");
+      promotionSmsFeedback.textContent = "";
+      if (!smsSubscriberResult.count) {
+        showError(new Error("No customers have opted in to promotional SMS."), promotionSmsFeedback);
+        return;
+      }
+      if (!window.confirm(`Send this promotion to ${smsSubscriberResult.count} opted-in customer(s)?`)) return;
+      promotionSmsButton.disabled = true;
+      try {
+        const data = await invokeSms(backend.client, "coconibz-admin-sms", {
+          kind: "promotion",
+          message: promotionSmsMessage.value.trim(),
+        });
+        if (!data?.sent) throw new Error("NotifyGH did not confirm the promotional SMS request.");
+        await renderPage();
+        setMessage(
+          data.failedCount
+            ? `Promotional SMS accepted for ${data.recipientCount} recipients; ${data.failedCount} delivery${data.failedCount === 1 ? "" : "ies"} failed.`
+            : `Promotional SMS accepted for ${data.recipientCount} opted-in customers.`,
+          Boolean(data.failedCount)
+        );
+      } catch (error) {
+        showError(error, promotionSmsFeedback);
+      } finally {
+        promotionSmsButton.disabled = false;
+      }
+    });
+
     content.replaceChildren(
       node("p", "portal-subtitle", "Manage homepage promotions and gallery images here. Public images rotate only while published; uploaded client photos require permission."),
       card("Add to the homepage gallery", galleryForm, "One randomly chosen image is shown at a time and changes every 20 seconds."),
@@ -1675,7 +1793,9 @@ import "./supabase-client.js";
         ["Image", "Headline", "Description", "Status", "Added", "Actions"],
         marketingRows(promotions, "coconibz_promotions", "title", "description"),
         "No homepage promotions have been created."
-      ))
+      )),
+      card("Send a manual SMS", manualSmsForm, "Send one message to a specific number. Promotional content should only be sent to customers who have opted in."),
+      card("Send a promotion by SMS", promotionSmsForm, "Promotional SMS are limited to customers who explicitly opt in from Account & security.")
     );
   }
 

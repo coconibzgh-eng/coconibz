@@ -30,6 +30,9 @@ const profilePhotoImage = document.querySelector("#account-avatar");
 const profilePhotoMessage = document.querySelector("#profile-photo-message");
 const passwordChangeForm = document.querySelector("#password-change-form");
 const passwordChangeMessage = document.querySelector("#password-change-message");
+const smsMarketingForm = document.querySelector("#sms-marketing-form");
+const smsMarketingOptIn = document.querySelector("#sms-marketing-opt-in");
+const smsMarketingMessage = document.querySelector("#sms-marketing-message");
 const editOrderDialog = document.querySelector("#edit-order-dialog");
 const editOrderForm = document.querySelector("#edit-order-form");
 const editOrderFulfillment = document.querySelector("#edit-order-fulfillment");
@@ -187,7 +190,7 @@ signinChoice.addEventListener("click", () => {
 async function getProfile(userId) {
   const { data, error } = await backend.client
     .from("profiles")
-    .select("full_name, role, avatar_path")
+    .select("full_name, role, avatar_path, sms_marketing_opt_in")
     .eq("id", userId)
     .single();
   if (error) throw error;
@@ -236,6 +239,8 @@ async function showSignedInAccount(session) {
   portalLink.hidden = !["admin", "retailer"].includes(profile.role);
   portalLink.href = "operations.html";
   accountRetailerInviteForm.hidden = profile.role !== "customer";
+  smsMarketingForm.hidden = profile.role !== "customer";
+  smsMarketingOptIn.checked = Boolean(profile.sms_marketing_opt_in);
   if (continueAfterAuth()) return;
   await showProfilePhoto(profile.avatar_path);
   if (window.location.hash === "#account-settings") {
@@ -692,6 +697,35 @@ passwordChangeForm.addEventListener("submit", async (event) => {
     setInlineMessage(passwordChangeMessage, `Could not update your password: ${error.message}`, true);
   } finally {
     setBusy(passwordChangeForm, false);
+  }
+});
+
+smsMarketingForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(smsMarketingForm, true);
+  setInlineMessage(smsMarketingMessage, "");
+
+  try {
+    if (!currentSession || currentProfile?.role !== "customer") {
+      throw new Error("Sign in to a customer account to change this preference.");
+    }
+    const { error } = await backend.client
+      .from("profiles")
+      .update({ sms_marketing_opt_in: smsMarketingOptIn.checked })
+      .eq("id", currentSession.user.id);
+    if (error) throw error;
+
+    currentProfile.sms_marketing_opt_in = smsMarketingOptIn.checked;
+    setInlineMessage(
+      smsMarketingMessage,
+      smsMarketingOptIn.checked
+        ? "Promotional SMS consent saved."
+        : "You are opted out of promotional SMS."
+    );
+  } catch (error) {
+    setInlineMessage(smsMarketingMessage, `Could not save your SMS preference: ${error.message}`, true);
+  } finally {
+    setBusy(smsMarketingForm, false);
   }
 });
 

@@ -1,4 +1,5 @@
 import "./supabase-client.js";
+import { invokeSms } from "./sms-client.js";
 
 const backend = window.coconibzBackend;
 const portalMessage = document.querySelector("#portal-message");
@@ -213,7 +214,21 @@ async function updateOrderStatus(order, select) {
     return;
   }
   order.status = select.value;
-  setPortalMessage("Order status updated.");
+  let smsError = null;
+  try {
+    await invokeSms(backend.client, "coconibz-notify-sms", {
+      kind: "order_status",
+      order_id: order.id,
+    });
+  } catch (error) {
+    smsError = error;
+  }
+  setPortalMessage(
+    smsError
+      ? `Order status updated, but its SMS notification failed: ${smsError.message}`
+      : "Order status updated and the SMS request was accepted.",
+    Boolean(smsError)
+  );
   if (role === "admin") await loadSalesSummary();
 }
 

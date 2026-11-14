@@ -127,6 +127,16 @@
             <p class="portal-message" id="password-change-message" role="status" aria-live="polite"></p>
             <button class="button button-primary" type="submit">Update password</button>
           </form>
+          <form class="account-security-form" id="sms-marketing-form" hidden>
+            <h4>SMS promotions</h4>
+            <p>Choose whether COCONIBZ may text you product offers and promotions. Order and account messages are separate.</p>
+            <label class="sms-consent" for="sms-marketing-opt-in">
+              <input id="sms-marketing-opt-in" name="sms_marketing_opt_in" type="checkbox">
+              I agree to receive promotional SMS messages. Message and data rates may apply; I can opt out here at any time.
+            </label>
+            <p class="portal-message" id="sms-marketing-message" role="status" aria-live="polite"></p>
+            <button class="button button-primary" type="submit">Save SMS preference</button>
+          </form>
         </div>
       </section>
       <form class="account-retailer-invite" id="account-retailer-invite-form" hidden>
